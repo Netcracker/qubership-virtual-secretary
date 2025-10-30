@@ -50,6 +50,7 @@ jobs:
           cd /tmp/WORKDIR                    
           
           java -jar vsec.jar --fake-run ./makedb.db
+          mkdir -p ${CURRENT_DIR}/data
           cp ./makedb.db ${CURRENT_DIR}/data/makedb.db
           
           cd ${CURRENT_DIR}                    
