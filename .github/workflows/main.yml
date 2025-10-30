@@ -49,16 +49,16 @@ jobs:
           echo "Current directory is ${CURRENT_DIR}"
           cd /tmp/WORKDIR                    
           
-          java -jar vsec.jar --fake-run ./makedb.db
+          java -jar vsec.jar --fake-run ./mapdb.db
           mkdir -p ${CURRENT_DIR}/data
-          cp ./makedb.db ${CURRENT_DIR}/data/makedb.db
+          cp ./mapdb.db ${CURRENT_DIR}/data/mapdb.db
           
           cd ${CURRENT_DIR}                    
 
           git config user.name github-actions
           git config user.email github-actions@github.com
           
-          git add ./data/makedb.db                    
+          git add ./data/mapdb.db                    
           
           git commit -m "Change makedb.db after run in GitHub VM"
           git push
