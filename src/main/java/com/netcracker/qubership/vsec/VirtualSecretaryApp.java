@@ -5,6 +5,10 @@ import com.netcracker.qubership.vsec.jobs.AllJobsRegistry;
 import com.netcracker.qubership.vsec.mattermost.MattermostClientFactory;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import net.bis5.mattermost.client4.MattermostClient;
+import org.mapdb.DB;
+import org.mapdb.DBMaker;
+import org.mapdb.HTreeMap;
+import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,10 +20,16 @@ public class VirtualSecretaryApp {
 
     public static void main(String[] args) {
         // Check if program arguments are specified
-        if (args.length != 1) {
+        if (args.length < 1) {
             System.out.println("Incorrect program arguments");
             System.out.println("Usage example: VirtualSecretaryApp $PATH_TO_PROPERTIES_FILE$");
             System.exit(1);
+        }
+
+        // Adding ability to do test runs of the application in the remove environment (Github VMs)
+        if ("--fake-run".equals(args[0])) {
+            fakeRun(args);
+            System.exit(0);
         }
 
         // Check if argument goes to properties files
@@ -48,4 +58,29 @@ public class VirtualSecretaryApp {
         // Run all jobs
         allJobsRegistry.runAllActiveJobs(appProps, client);
     }
+
+    private static void fakeRun(String[] args) {
+        log.info("This is a fake run. Timestamp = " + System.currentTimeMillis());
+
+        DB db = DBMaker.fileDB(new File(args[1]))
+                .closeOnJvmShutdown()  // Automatically close on JVM shutdown
+                .transactionEnable()   // Enable transactions
+                .make();
+
+        HTreeMap<String, String> cache = db.hashMap("test-cache")
+                .keySerializer(Serializer.STRING)
+                .valueSerializer(Serializer.STRING)
+                .createOrOpen();
+
+        // Add some data
+        cache.put("key1", "John Doe");
+        cache.put("key2", "Jane Smith");
+
+        // Commit transaction
+        db.commit();
+
+        // Close database
+        db.close();
+    }
+
 }
