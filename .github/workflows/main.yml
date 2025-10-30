@@ -60,7 +60,7 @@ jobs:
           git config user.name github-actions
           git config user.email github-actions@github.com
           
-          git add ./data/mapdb.db                    
+          git add ./data/mapdb.db.mv.db                   
           
-          git commit -m "Change makedb.db after run in GitHub VM"
+          git commit -m "Persist data after run in GitHub VM"
           git push
