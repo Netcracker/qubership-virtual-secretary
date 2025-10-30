@@ -47,11 +47,13 @@ jobs:
         run: |
           CURRENT_DIR=$(pwd)
           echo "Current directory is ${CURRENT_DIR}"
+          mkdir -p /tmp/WORKDIR/data
+          cp ${CURRENT_DIR}/data/mapdb.db.mv.db /tmp/WORKDIR/mapdb.db.mv.db
           cd /tmp/WORKDIR                    
           
           java -jar vsec.jar --fake-run ./mapdb.db
           mkdir -p ${CURRENT_DIR}/data
-          cp ./mapdb.db ${CURRENT_DIR}/data/mapdb.db
+          cp ./mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
           
           cd ${CURRENT_DIR}                    
 
