@@ -5,15 +5,14 @@ import com.netcracker.qubership.vsec.jobs.AllJobsRegistry;
 import com.netcracker.qubership.vsec.mattermost.MattermostClientFactory;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import net.bis5.mattermost.client4.MattermostClient;
-import org.mapdb.DB;
-import org.mapdb.DBMaker;
-import org.mapdb.HTreeMap;
-import org.mapdb.Serializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.sql.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 public class VirtualSecretaryApp {
     private static final Logger log = LoggerFactory.getLogger(VirtualSecretaryApp.class);
@@ -59,31 +58,100 @@ public class VirtualSecretaryApp {
         allJobsRegistry.runAllActiveJobs(appProps, client);
     }
 
+
+    private static final String DB_DRIVER = "org.h2.Driver";
+    private static final String DB_USER = "admin";
+    private static final String DB_PASSWORD = "FileEncryptionKey456 MyStrongPassword123"; // requires exact in this format
+    // file_password user_password
+
+    private static final String CREATE_TABLE_SQL = """
+            CREATE TABLE IF NOT EXISTS timestamp_data (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                event_name VARCHAR(100) NOT NULL,
+                timestamp_value VARCHAR(19) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """;
+
+    private static final String INSERT_SQL = """
+        INSERT INTO timestamp_data (event_name, timestamp_value) 
+        VALUES (?, ?)
+        """;
+
+    private static final DateTimeFormatter FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
     private static void fakeRun(String[] args) {
         log.info("This is a fake run. Timestamp = " + System.currentTimeMillis());
 
-        DB db = DBMaker.fileDB(new File(args[1]))
-                .closeOnJvmShutdown()  // Automatically close on JVM shutdown
-                .transactionEnable()   // Enable transactions
-                .make();
+        try {
+            // Load H2 JDBC driver
+            Class.forName(DB_DRIVER);
 
-        HTreeMap<String, Long> cache = db.hashMap("test-cache")
-                .keySerializer(Serializer.STRING)
-                .valueSerializer(Serializer.LONG)
-                .createOrOpen();
+            // Create connection with file password for encryption
+            String connectionUrl = "jdbc:h2:" + args[1] + ";CIPHER=AES;";
 
-        Long value = cache.get("test-key");
-        log.info("Existed value in the persistenc-cache is {}", value);
+            try (Connection conn = DriverManager.getConnection(connectionUrl, DB_USER, DB_PASSWORD);
+                 Statement stmt = conn.createStatement()) {
 
-        Long newValue = System.currentTimeMillis();
-        cache.put("test-key", newValue);
-        log.info("Value in the cache was updated from {} to {}", value, newValue);
+                // Create table
+                stmt.execute(CREATE_TABLE_SQL);
+                System.out.println("Database initialized successfully!");
 
-        // Commit transaction
-        db.commit();
+                // Get current timestamp in required format
+                String currentTimestamp = LocalDateTime.now().format(FORMATTER);
 
-        // Close database
-        db.close();
+                try (PreparedStatement pstmt = conn.prepareStatement(INSERT_SQL)) {
+                    // Set parameters
+                    pstmt.setString(1, "test-event");
+                    pstmt.setString(2, currentTimestamp);
+
+                    // Execute insert
+                    int rowsAffected = pstmt.executeUpdate();
+
+                    if (rowsAffected > 0) {
+                        System.out.println("Stored timestamp for event: " + "test-event" + " - " + currentTimestamp);
+                    }
+                }
+
+                retrieveTimestamps(conn);
+            }
+
+        } catch (ClassNotFoundException e) {
+            System.err.println("H2 JDBC Driver not found: " + e.getMessage());
+        } catch (SQLException e) {
+            System.err.println("Database initialization failed: " + e.getMessage());
+        }
+    }
+
+    private static final String SELECT_SQL = """
+        SELECT id, event_name, timestamp_value, created_at 
+        FROM timestamp_data 
+        ORDER BY created_at DESC
+        """;
+
+    public static void retrieveTimestamps(Connection conn) {
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(SELECT_SQL)) {
+
+            System.out.println("\n=== Stored Timestamps ===");
+            System.out.printf("%-5s %-15s %-20s %-20s%n",
+                    "ID", "Event", "Timestamp", "Created At");
+            System.out.println("------------------------------------------------------------");
+
+            while (rs.next()) {
+                int id = rs.getInt("id");
+                String eventName = rs.getString("event_name");
+                String timestampValue = rs.getString("timestamp_value");
+                Timestamp createdAt = rs.getTimestamp("created_at");
+
+                System.out.printf("%-5d %-15s %-20s %-20s%n",
+                        id, eventName, timestampValue, createdAt);
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Failed to retrieve timestamps: " + e.getMessage());
+        }
     }
 
 }
