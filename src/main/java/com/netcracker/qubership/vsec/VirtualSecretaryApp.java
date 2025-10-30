@@ -67,14 +67,17 @@ public class VirtualSecretaryApp {
                 .transactionEnable()   // Enable transactions
                 .make();
 
-        HTreeMap<String, String> cache = db.hashMap("test-cache")
+        HTreeMap<String, Long> cache = db.hashMap("test-cache")
                 .keySerializer(Serializer.STRING)
-                .valueSerializer(Serializer.STRING)
+                .valueSerializer(Serializer.LONG)
                 .createOrOpen();
 
-        // Add some data
-        cache.put("key1", "John Doe");
-        cache.put("key2", "Jane Smith");
+        Long value = cache.get("test-key");
+        log.info("Existed value in the persistenc-cache is {}", value);
+
+        Long newValue = System.currentTimeMillis();
+        cache.put("test-key", newValue);
+        log.info("Value in the cache was updated from {} to {}", value, newValue);
 
         // Commit transaction
         db.commit();
