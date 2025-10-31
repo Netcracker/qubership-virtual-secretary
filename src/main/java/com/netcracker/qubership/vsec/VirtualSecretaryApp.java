@@ -84,14 +84,26 @@ public class VirtualSecretaryApp {
     private static void fakeRun(String[] args) {
         log.info("This is a fake run. Timestamp = " + System.currentTimeMillis());
 
+        final String propsFileName = args[1];
+        AppProperties appProps = null;
+        try {
+            JavaPropsMapper mapper = new JavaPropsMapper();
+            appProps = mapper.readValue(new File(propsFileName), AppProperties.class);
+        } catch (IOException ex) {
+            log.error("Error while loading application properties from {}", propsFileName, ex);
+            System.exit(1);
+        }
+
         try {
             // Load H2 JDBC driver
             Class.forName(DB_DRIVER);
 
             // Create connection with file password for encryption
-            String connectionUrl = "jdbc:h2:" + args[1] + ";CIPHER=AES;";
+            String connectionUrl = "jdbc:h2:" + appProps.getDbFileName() + ";CIPHER=AES;";
 
-            try (Connection conn = DriverManager.getConnection(connectionUrl, DB_USER, DB_PASSWORD);
+            String passString = appProps.getDbFileEncryptionPassword() + " " + appProps.getDbUserPassword();
+
+            try (Connection conn = DriverManager.getConnection(connectionUrl, appProps.getDbUserName(), passString);
                  Statement stmt = conn.createStatement()) {
 
                 // Create table
