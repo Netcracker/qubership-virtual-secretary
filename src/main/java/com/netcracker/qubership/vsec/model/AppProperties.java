@@ -79,4 +79,7 @@ public class AppProperties {
     public String getDbFileName() {
         return "./data/mapdb.db";
     }
+
+    @JsonProperty(value = "version")
+    private String version;
 }

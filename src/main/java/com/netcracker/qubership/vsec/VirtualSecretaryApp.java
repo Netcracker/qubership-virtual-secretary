@@ -89,6 +89,7 @@ public class VirtualSecretaryApp {
         try {
             JavaPropsMapper mapper = new JavaPropsMapper();
             appProps = mapper.readValue(new File(propsFileName), AppProperties.class);
+            log.info("Application properties were loaded from file {}, version = {}", propsFileName, appProps.getVersion());
         } catch (IOException ex) {
             log.error("Error while loading application properties from {}", propsFileName, ex);
             System.exit(1);
