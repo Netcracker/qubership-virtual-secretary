@@ -2,6 +2,9 @@ package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netcracker.qubership.vsec.jobs.AbstractActiveJob;
+import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models.ReportWarning;
+import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models.SheetData;
+import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models.SheetRow;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import com.netcracker.qubership.vsec.model.team.QSMember;
 import com.netcracker.qubership.vsec.model.team.QSTeam;
@@ -11,15 +14,26 @@ import net.bis5.mattermost.client4.MattermostClient;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
-import java.time.DayOfWeek;
+import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
+import static java.time.DayOfWeek.*;
+
 public class WeeklyReportAnalyzer extends AbstractActiveJob {
     @Override
-    protected void runAsync(AppProperties appProperties, MattermostClient client) {
+    protected void runAsync(AppProperties appProperties, MattermostClient client, Connection conn) {
+        WRHelper wrHelper = new WRHelper(appProperties, client, conn);
+        wrHelper.loadLatestDataFromGoogleSheet();
+        wrHelper.friendlyNotifyAllToSendReportIfTodayIs(FRIDAY);
+        wrHelper.angryNotifyToSendMissedReportsIfTodayIs(MONDAY);
+        wrHelper.calculateReportQualityPerPersonAndProvideFeedback();
+        wrHelper.sendReportToManagementIfTodayIs(TUESDAY);
+
+        if (true) return;
+
         // prepare data
         QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties.getQubershipTeamConfigFile());
         SheetData sheetData;
@@ -76,7 +90,7 @@ public class WeeklyReportAnalyzer extends AbstractActiveJob {
         LocalDate startDate = LocalDate.parse(startDateStrYYYYMMDD, formatter);
 
         // ensure start date points to Monday
-        while (startDate.getDayOfWeek() != DayOfWeek.MONDAY) {
+        while (startDate.getDayOfWeek() != MONDAY) {
             startDate = startDate.plusDays(1);
         }
 

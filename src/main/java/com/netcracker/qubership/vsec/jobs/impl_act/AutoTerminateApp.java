@@ -5,13 +5,15 @@ import com.netcracker.qubership.vsec.model.AppProperties;
 import com.netcracker.qubership.vsec.utils.MiscUtils;
 import net.bis5.mattermost.client4.MattermostClient;
 
+import java.sql.Connection;
+
 /**
  * In case APP_AUTO_TERMINATION_DELAY_IN_SECONDS property has positive value - this action terminates application after time is passed.
  * Useful for local development as application requires manual stop.
  */
 public class AutoTerminateApp extends AbstractActiveJob {
     @Override
-    protected void runAsync(AppProperties appProperties, MattermostClient client) {
+    protected void runAsync(AppProperties appProperties, MattermostClient client, Connection conn) {
         if (appProperties.getAutoTerminationDelayInSeconds() > 0) {
             long delaySecs = appProperties.getAutoTerminationDelayInSeconds();
 

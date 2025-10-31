@@ -11,6 +11,7 @@ import net.bis5.mattermost.client4.MattermostClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -42,11 +43,13 @@ public class AllJobsRegistry {
         return registeredReflectiveJobs;
     }
 
-    public void runAllActiveJobs(AppProperties appProperties, MattermostClient client) {
+    public void runAllActiveJobs(AppProperties appProperties, MattermostClient client, Connection connection) {
         try (ExecutorService executor = Executors.newFixedThreadPool(registeredActiveJobs.size())) {
 
             for (AbstractActiveJob aJob : registeredActiveJobs) {
-                executor.execute(aJob.withContext(appProperties).withMattermostClient(client));
+                executor.execute(
+                        aJob.withContext(appProperties).withMattermostClient(client).withConnectionToDB(connection)
+                );
             }
             executor.shutdown();
 

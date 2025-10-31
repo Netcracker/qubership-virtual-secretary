@@ -1,4 +1,4 @@
-package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports;
+package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models;
 
 import com.netcracker.qubership.vsec.model.team.QSMember;
 
