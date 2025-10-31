@@ -51,7 +51,8 @@ jobs:
           cp ${CURRENT_DIR}/data/mapdb.db.mv.db /tmp/WORKDIR/mapdb.db.mv.db
           cd /tmp/WORKDIR                    
           
-          java -jar vsec.jar --fake-run ./mapdb.db
+          echo "$APP_PROPERTIES_FILE" > app.properties
+          java -jar vsec.jar --fake-run app.properties
           mkdir -p ${CURRENT_DIR}/data
           cp ./mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
           
