@@ -56,7 +56,7 @@ jobs:
           cd /tmp/WORKDIR                    
           
           echo "${{ secrets.APP_PROPERTIES_FILE }}" > app.properties
-          java -jar vsec.jar --fake-run ./app.properties
+          java -jar vsec.jar ./app.properties
           mkdir -p ${CURRENT_DIR}/data
           cp ./data/mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
           
