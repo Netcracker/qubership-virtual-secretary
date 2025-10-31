@@ -2,7 +2,10 @@ package com.netcracker.qubership.vsec.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AccessLevel;
+import lombok.Getter;
 
+@Getter(AccessLevel.PUBLIC)
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AppProperties {
     /**
@@ -60,35 +63,20 @@ public class AppProperties {
     @JsonProperty(value = "WEEKLY_REPORT_START_DATE_MONDAY", required = true)
     private String weeklyReportsStartDateMonday;
 
-    public String getMmHost() {
-        return mmHost;
-    }
+    @JsonProperty(value = "DB_USER_NAME",required = true)
+    private String dbUserName;
 
-    public String getMmToken() {
-        return mmToken;
-    }
+    @JsonProperty(value = "DB_USER_PASSWORD", required = true)
+    private String dbUserPassword;
 
-    public Long getAutoTerminationDelayInSeconds() {
-        return autoTerminationDelayInSeconds;
-    }
+    @JsonProperty(value = "DB_FILE_ENCRYPTION_PASSWORD", required = true)
+    private String dbFileEncryptionPassword;
 
-    public String getWeeklyReportSheetId() {
-        return weeklyReportSheetId;
-    }
-
-    public String getWeeklyReportSheetName() {
-        return weeklyReportSheetName;
-    }
-
-    public String getWeeklyReportApiKey() {
-        return weeklyReportApiKey;
-    }
-
-    public String getQubershipTeamConfigFile() {
-        return qubershipTeamConfigFile;
-    }
-
-    public String getWeeklyReportsStartDateMonday() {
-        return weeklyReportsStartDateMonday;
+    /**
+     * Name of the database file to persist data into.
+     * Hardcoded value "./data/mapdb.db" is used as it is used in github actions.
+     */
+    public String getDbFileName() {
+        return "./data/mapdb.db";
     }
 }
