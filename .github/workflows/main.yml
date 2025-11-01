@@ -52,7 +52,14 @@ jobs:
           CURRENT_DIR=$(pwd)
           echo "Current directory is ${CURRENT_DIR}"
           mkdir -p /tmp/WORKDIR/data
-          cp ${CURRENT_DIR}/data/mapdb.db.mv.db /tmp/WORKDIR/data/mapdb.db.mv.db
+          
+          # copy database file if exists
+          if [ -f "${CURRENT_DIR}/data/mapdb.db.mv.db" ]; then
+            cp "${CURRENT_DIR}/data/mapdb.db.mv.db" "/tmp/WORKDIR/data/mapdb.db.mv.db"
+          else
+            echo "File does not exist, skipping copy"
+          fi
+          
           cd /tmp/WORKDIR                    
           
           echo "${{ secrets.APP_PROPERTIES_FILE }}" > app.properties
