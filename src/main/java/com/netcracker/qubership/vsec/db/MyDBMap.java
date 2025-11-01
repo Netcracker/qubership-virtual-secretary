@@ -77,4 +77,10 @@ public class MyDBMap {
     public String getValue(String key) {
         return data.get(key);
     }
+
+    public String getValue(String key, String defaultValue) {
+        String actualValue = data.get(key);
+        if (actualValue == null) setValue(key, defaultValue);
+        return getValue(key);
+    }
 }

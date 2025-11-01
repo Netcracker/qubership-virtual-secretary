@@ -27,20 +27,12 @@ class SheetDataDeserializer extends JsonDeserializer<SheetData> {
         JsonNode valuesNode = node.get("values");
         List<SheetRow> rows = new ArrayList<>();
 
-        boolean skipCaptionRow = true;
-        if (valuesNode.isArray()) {
+        if (valuesNode != null && valuesNode.isArray()) {
             for (JsonNode rowNode : valuesNode) {
                 if (rowNode.isArray()) {
                     List<String> rowData = new ArrayList<>();
                     for (JsonNode cellNode : rowNode) {
                         rowData.add(cellNode.asText());
-                    }
-
-                    if (skipCaptionRow) {
-                        if (rowData.contains(KEY_FIELD_MONDAY) && rowData.contains(KEY_FIELD_WHAT_HAVE_BEEN_DONE)) {
-                            skipCaptionRow = false;
-                            continue;
-                        } else throw new UnexpectedException("No expected fields in the caption row");
                     }
 
                     rows.add(new SheetRow(rowData));
