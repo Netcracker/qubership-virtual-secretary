@@ -5,10 +5,13 @@ import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models.
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MyDBSheet {
     private static final Logger log = LoggerFactory.getLogger(MyDBSheet.class);
@@ -94,5 +97,70 @@ public class MyDBSheet {
         }
 
         return updates.length;
+    }
+
+    public List<SheetRow> loadByReportDate(LocalDate dateOfWeekBegining) {
+        List<SheetRow> result = new ArrayList<>();
+
+        try (PreparedStatement pstm = conn.prepareStatement("select * from my_db_sheet where report_date = ?")) {
+            pstm.setString(1, dateOfWeekBegining.toString());
+
+            try (ResultSet rs = pstm.executeQuery()) {
+                while (rs.next()) {
+                    String createdWhen = rs.getString("created_when");
+                    String reporterEmail = rs.getString("reporter_email");
+                    String reporterName = rs.getString("reporter_name");
+                    String report_date = rs.getString("report_date");
+                    String msgDone = rs.getString("msg_done");
+                    String msgPlans = rs.getString("msg_plans");
+
+                    SheetRow row = new SheetRow();
+                    row.setTimestamp(LocalDateTime.parse(createdWhen));
+                    row.setEmail(reporterEmail);
+                    row.setFullName(reporterName);
+                    row.setWeekStartDate(report_date);
+                    row.setCompletedWork(msgDone);
+                    row.setNextWeekPlans(msgPlans);
+
+                    result.add(row);
+                }
+            }
+        } catch (SQLException sqlEx) {
+            log.error("Error while loading data by report date", sqlEx);
+            throw new IllegalStateException(sqlEx);
+        }
+
+        return result;
+    }
+
+    /**
+     * Collects pairs of email -> date which are missed in the database, which in turns means that the report was not submitted by a person
+     * @param teamEmails List of email of the team to collect data for
+     * @param dateFromInc date to proceed database from (including)
+     * @param dateTillInc date to proceed database to (including)
+     */
+    public Map<String, List<LocalDate>> findMissedReportRecords(List<String> teamEmails, LocalDate dateFromInc, LocalDate dateTillInc) {
+        Map<String, List<LocalDate>> result = new HashMap<>();
+
+
+        LocalDate curDate = dateFromInc;
+        while (curDate.isBefore(dateTillInc) || curDate.equals(dateTillInc)) {
+            List<String> emailPerDate = new ArrayList<>(teamEmails);
+            List<SheetRow> reportsPerDate = loadByReportDate(curDate);
+
+            for (SheetRow row : reportsPerDate) {
+                emailPerDate.remove(row.getEmail());
+            }
+
+            // here we have unreported emails per curDate date
+            for (String email : emailPerDate) {
+                List<LocalDate> dates = result.computeIfAbsent(email, k -> new ArrayList<>());
+                dates.add(curDate);
+            }
+
+            curDate = curDate.plusWeeks(1);
+        }
+
+        return result;
     }
 }

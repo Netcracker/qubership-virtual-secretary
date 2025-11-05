@@ -1,7 +1,7 @@
 package com.netcracker.qubership.vsec.jobs;
 
+import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
-import net.bis5.mattermost.client4.MattermostClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,10 +13,10 @@ import java.sql.Connection;
 public abstract class AbstractActiveJob implements Runnable {
     private final Logger log;
     private AppProperties appProperties;
-    private MattermostClient client;
+    private MatterMostClientHelper mmHelper;
     private Connection conn;
 
-    protected abstract void runAsync(AppProperties appProperties, MattermostClient client, Connection conn);
+    protected abstract void runAsync(AppProperties appProperties, MatterMostClientHelper mmHelper, Connection conn);
 
     public AbstractActiveJob() {
         this.log = LoggerFactory.getLogger(getClass());
@@ -28,7 +28,7 @@ public abstract class AbstractActiveJob implements Runnable {
 
     @Override
     public final void run() {
-        runAsync(appProperties, client, conn);
+        runAsync(appProperties, mmHelper, conn);
     }
 
     public AbstractActiveJob withContext(AppProperties appProperties) {
@@ -38,10 +38,10 @@ public abstract class AbstractActiveJob implements Runnable {
         return this;
     }
 
-    public AbstractActiveJob withMattermostClient(MattermostClient client) {
-        if (this.client != null) throw new IllegalStateException("Mattermost client is already set");
+    public AbstractActiveJob withMattermostClient(MatterMostClientHelper mmHelper) {
+        if (this.mmHelper != null) throw new IllegalStateException("Mattermost helper is already set");
 
-        this.client = client;
+        this.mmHelper = mmHelper;
         return this;
     }
 

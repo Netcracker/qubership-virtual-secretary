@@ -6,8 +6,8 @@ import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.WeeklyReportAn
 import com.netcracker.qubership.vsec.jobs.impl_refl.TestReflJob1;
 import com.netcracker.qubership.vsec.jobs.impl_refl.TestReflJob2;
 import com.netcracker.qubership.vsec.jobs.impl_refl.TestReflJob3;
+import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
-import net.bis5.mattermost.client4.MattermostClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +43,7 @@ public class AllJobsRegistry {
         return registeredReflectiveJobs;
     }
 
-    public void runAllActiveJobs(AppProperties appProperties, MattermostClient client, Connection connection) {
+    public void runAllActiveJobs(AppProperties appProperties, MatterMostClientHelper client, Connection connection) {
         try (ExecutorService executor = Executors.newFixedThreadPool(registeredActiveJobs.size())) {
 
             for (AbstractActiveJob aJob : registeredActiveJobs) {

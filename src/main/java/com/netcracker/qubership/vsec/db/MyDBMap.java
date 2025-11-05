@@ -12,7 +12,7 @@ public class MyDBMap {
 
     private static final String CREATE_TABLE_SQL = """
             CREATE TABLE IF NOT EXISTS my_db_map (
-                 key_name VARCHAR(32) PRIMARY KEY,
+                 key_name VARCHAR(256) PRIMARY KEY,
                  key_value VARCHAR(4096)
               )
             """;
@@ -21,7 +21,7 @@ public class MyDBMap {
 
     private static final String SAVE_ALL_SQL = "MERGE INTO my_db_map (key_name, key_value) VALUES (?, ?)";
 
-    private Connection conn;
+    private final Connection conn;
     private Map<String, String> data;
 
     public MyDBMap(Connection conn) {
