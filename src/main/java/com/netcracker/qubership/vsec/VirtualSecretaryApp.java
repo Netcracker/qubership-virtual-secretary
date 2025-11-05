@@ -2,6 +2,7 @@ package com.netcracker.qubership.vsec;
 
 import com.fasterxml.jackson.dataformat.javaprop.JavaPropsMapper;
 import com.netcracker.qubership.vsec.jobs.AllJobsRegistry;
+import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.mattermost.MattermostClientFactory;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import com.netcracker.qubership.vsec.utils.DBUtils;
@@ -57,10 +58,11 @@ public class VirtualSecretaryApp {
 
         try (Connection conn = DriverManager.getConnection(connectionUrl, appProps.getDbUserName(), passString)) {
             // Open connection to Mattermost server
-            MattermostClient client = MattermostClientFactory.openNewClient(appProps.getMmHost(), appProps.getMmToken(), allJobsRegistry.getRegisteredReflectiveJobs());
+            MattermostClient mmClient = MattermostClientFactory.openNewClient(appProps.getMmHost(), appProps.getMmToken(), allJobsRegistry.getRegisteredReflectiveJobs());
+            MatterMostClientHelper mmHelper = new MatterMostClientHelper(mmClient);
 
             // Run all jobs
-            allJobsRegistry.runAllActiveJobs(appProps, client, conn);
+            allJobsRegistry.runAllActiveJobs(appProps, mmHelper, conn);
         } catch (SQLException sqlEx) {
             log.error("Error while working with DB. Terminating application.", sqlEx);
             System.exit(1);

@@ -6,13 +6,10 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
-import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 import java.util.List;
 
 class SheetDataDeserializer extends JsonDeserializer<SheetData> {
-    private static final String KEY_FIELD_MONDAY = "Start date of the reported week (Monday)";
-    private static final String KEY_FIELD_WHAT_HAVE_BEEN_DONE = "What have been done";
 
     @Override
     public SheetData deserialize(JsonParser p, DeserializationContext ctxt)
