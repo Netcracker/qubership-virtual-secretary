@@ -1,9 +1,10 @@
-package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models;
+package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.netcracker.qubership.vsec.db.SheetRow;
 
 import java.io.IOException;
 import java.util.ArrayList;

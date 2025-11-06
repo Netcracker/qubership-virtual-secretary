@@ -3,7 +3,10 @@ package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netcracker.qubership.vsec.db.MyDBMap;
 import com.netcracker.qubership.vsec.db.MyDBSheet;
-import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models.SheetData;
+import com.netcracker.qubership.vsec.deepseek.DeepSeekCaller;
+import com.netcracker.qubership.vsec.deepseek.ReportAnalysis;
+import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper.SheetData;
+import com.netcracker.qubership.vsec.db.SheetRow;
 import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import com.netcracker.qubership.vsec.model.team.QSTeam;
@@ -132,7 +135,89 @@ class WRHelper {
      *
      */
     void calculateReportQualityPerPersonAndProvideFeedbackIfTodayIfNoonOf(DayOfWeek dayOfWeek) {
+        DeepSeekCaller deepSeekCaller = new DeepSeekCaller(appProperties.getDeepSeekUrl(), appProperties.getDeepSeekToken());
+        if (!deepSeekCaller.doSmokeTest()) {
+            log.error("Deepseek smoke test is not passed. Please check settings & token");
+            System.exit(1);
+        }
 
+        final String roleStr = "";
+        final String promptTemplate = """
+                You are an AI assistant that objectively evaluates weekly reports from developers and managers against strict criteria. Your task is to analyze the report text and assign scores across 4 key categories, then calculate a final score.
+                
+                EVALUATION CRITERIA (Scale 1-10):
+                
+                1. CONTENT & COMPLETENESS
+                   - Information density (specifics vs. filler content)
+                   - Coverage of work categories (development, research, collaboration, operations, improvements)
+                   - Structure (logical sections, lists, paragraphs)
+                
+                2. IMPACT & RESULTS
+                   - Use of action verbs (completed, fixed, improved vs. started, worked on)
+                   - Presence of measurable results (numbers, metrics, quantitative indicators)
+                   - Connection to goals (explicit mentions of OKRs, business objectives)
+                
+                3. PROACTIVITY & PROBLEM-SOLVING
+                   - Description of problems and proposed/implemented solutions
+                   - Mention of plans, risks, future improvements
+                   - Constructive analysis of difficulties
+                
+                4. PROFESSIONAL CONTEXT
+                   - Use of technical/professional terminology
+                   - Mention of code review processes, collaboration, code quality
+                   - Specificity and depth of technical details
+                
+                FINAL SCORE FORMULA:
+                Final_Score = 0.3×Content_Score + 0.4×Impact_Score + 0.2×Proactivity_Score + 0.1×Context_Score
+                
+                ANALYSIS INSTRUCTIONS:
+                1. Read the report carefully
+                2. Evaluate each criterion on a 1-10 scale with justification
+                3. Calculate the final score using the formula
+                4. Provide detailed commentary with strengths and improvement recommendations
+                5. Be strict but fair - low scores must be justified
+                
+                RESPONSE FORMAT:
+                {
+                  "scores": {
+                    "content_score": X,
+                    "impact_score": X,
+                    "proactivity_score": X,
+                    "context_score": X,
+                    "final_score": X.X
+                  },
+                  "analysis": {
+                    "content_justification": "text...",
+                    "impact_justification": "text...",
+                    "proactivity_justification": "text...",
+                    "context_justification": "text..."
+                  },
+                  "recommendations": {
+                    "strengths": ["strength 1", "strength 2"],
+                    "improvements": ["recommendation 1", "recommendation 2"]
+                  }
+                }
+                
+                The report to analyze goes next:
+                """;
+
+        // select one next report to analyze
+        List<SheetRow> sheetRows = myDBSheet.getReportsWithNoQualityScore();
+        for (SheetRow row : sheetRows) {
+            String finalPrompt = promptTemplate + row.getCompletedWork();
+            String strResponse = deepSeekCaller.getResponseAsSingleString(roleStr, finalPrompt);
+            String jsonStr = MiscUtils.getJsonFromMDQuotedString(strResponse);
+            try {
+                ReportAnalysis reportAnalysis = ReportAnalysis.createFromString(jsonStr);
+                myDBSheet.saveAnalysisIntoDB(row, reportAnalysis);
+
+                log.info("DeepSeek answer = " + reportAnalysis);
+                break;
+            } catch (Exception ex) {
+                log.error("Error while parsing string as json into ReportAnalysis class [{}]", jsonStr, ex);
+                throw new IllegalStateException(ex);
+            }
+        }
     }
 
     /**

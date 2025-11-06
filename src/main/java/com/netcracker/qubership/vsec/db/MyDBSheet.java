@@ -1,10 +1,11 @@
 package com.netcracker.qubership.vsec.db;
 
-import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models.SheetData;
-import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models.SheetRow;
+import com.netcracker.qubership.vsec.deepseek.ReportAnalysis;
+import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper.SheetData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Field;
 import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -18,15 +19,26 @@ public class MyDBSheet {
 
     private static final String CREATE_TABLE_SQL = """
              CREATE TABLE IF NOT EXISTS my_db_sheet (
-                   id INT AUTO_INCREMENT PRIMARY KEY,
-                   created_when VARCHAR(50) NOT NULL,
-                   reporter_email VARCHAR(255) NOT NULL,
-                   reporter_name VARCHAR(100),
-                   report_date VARCHAR(50) NOT NULL,
-                   msg_done VARCHAR,
-                   msg_plans VARCHAR
-               )
-            """;
+               id INT AUTO_INCREMENT PRIMARY KEY,
+               created_when VARCHAR(50) NOT NULL,
+               reporter_email VARCHAR(255) NOT NULL,
+               reporter_name VARCHAR(100),
+               report_date VARCHAR(50) NOT NULL,
+               msg_done VARCHAR,
+               msg_plans VARCHAR,
+               genai_content_score INT DEFAULT 0,
+               genai_impact_score INT DEFAULT 0,
+               genai_proactivity_score INT DEFAULT 0,
+               genai_context_score INT DEFAULT 0,
+               genai_final_score INT DEFAULT 0,
+               genai_analysis_content VARCHAR,
+               genai_analysis_impact VARCHAR,
+               genai_analysis_proactivity VARCHAR,
+               genai_analysis_context VARCHAR,
+               genai_analysis_strength VARCHAR,
+               genai_analysis_improvements VARCHAR
+           )
+           """;
     private static final String INSERT_SQL = """
             INSERT INTO my_db_sheet (
                 created_when,\s
@@ -79,6 +91,7 @@ public class MyDBSheet {
                 pstm.setString(4, row.getWeekStartDateAsLocalDate().toString()); // report_date
                 pstm.setString(5, row.getCompletedWork()); // msg_done
                 pstm.setString(6, row.getNextWeekPlans()); // msg_plans
+
                 pstm.addBatch();
             }
 
@@ -107,21 +120,7 @@ public class MyDBSheet {
 
             try (ResultSet rs = pstm.executeQuery()) {
                 while (rs.next()) {
-                    String createdWhen = rs.getString("created_when");
-                    String reporterEmail = rs.getString("reporter_email");
-                    String reporterName = rs.getString("reporter_name");
-                    String report_date = rs.getString("report_date");
-                    String msgDone = rs.getString("msg_done");
-                    String msgPlans = rs.getString("msg_plans");
-
-                    SheetRow row = new SheetRow();
-                    row.setTimestamp(LocalDateTime.parse(createdWhen));
-                    row.setEmail(reporterEmail);
-                    row.setFullName(reporterName);
-                    row.setWeekStartDate(report_date);
-                    row.setCompletedWork(msgDone);
-                    row.setNextWeekPlans(msgPlans);
-
+                    SheetRow row = parse(rs, SheetRow.class);
                     result.add(row);
                 }
             }
@@ -131,6 +130,91 @@ public class MyDBSheet {
         }
 
         return result;
+    }
+
+    /**
+     * Parses a ResultSet and maps columns to object fields using @DBProperty annotation
+     * @param resultSet The ResultSet to read data from
+     * @param clazz The class of the object to create and populate
+     * @return A new instance of the class with fields populated from ResultSet
+     */
+    private static <T> T parse(ResultSet resultSet, Class<T> clazz) {
+        try {
+            // Create new instance of the class
+            T instance = clazz.getDeclaredConstructor().newInstance();
+
+            // Get all declared fields of the class
+            Field[] fields = clazz.getDeclaredFields();
+
+            for (Field field : fields) {
+                // Check if field has @DBProperty annotation
+                if (field.isAnnotationPresent(MyDBColumn.class)) {
+                    MyDBColumn dbProperty = field.getAnnotation(MyDBColumn.class);
+                    String columnName = dbProperty.value();
+
+                    // Make the field accessible (in case it's private)
+                    field.setAccessible(true);
+
+                    // Get value from ResultSet and set it to the field
+                    Object value = resultSet.getObject(columnName);
+
+                    // Handle null values appropriately
+                    if (value != null) {
+                        // Convert the value to the field's type if necessary
+                        value = convertValue(value, field.getType());
+                        field.set(instance, value);
+                    }
+                }
+            }
+
+            return instance;
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error parsing ResultSet to object", e);
+        }
+    }
+
+    /**
+     * Converts the database value to the appropriate Java type
+     */
+    private static Object convertValue(Object value, Class<?> targetType) {
+        if (value == null) {
+            return null;
+        }
+
+        // If types already match, return as is
+        if (targetType.isInstance(value)) {
+            return value;
+        }
+
+        // Handle common type conversions
+        if (targetType == Integer.class || targetType == int.class) {
+            if (value instanceof Number) {
+                return ((Number) value).intValue();
+            } else if (value instanceof String) {
+                return Integer.parseInt((String) value);
+            }
+        } else if (targetType == Long.class || targetType == long.class) {
+            if (value instanceof Number) {
+                return ((Number) value).longValue();
+            } else if (value instanceof String) {
+                return Long.parseLong((String) value);
+            }
+        } else if (targetType == Double.class || targetType == double.class) {
+            if (value instanceof Number) {
+                return ((Number) value).doubleValue();
+            } else if (value instanceof String) {
+                return Double.parseDouble((String) value);
+            }
+        } else if (targetType == LocalDateTime.class) {
+            return LocalDateTime.parse((String) value);
+        } else if (targetType == String.class) {
+            return value.toString();
+        }
+
+        // If no conversion is possible, return the original value
+        // This might throw a ClassCastException later, which is acceptable
+        return value;
     }
 
     /**
@@ -162,5 +246,69 @@ public class MyDBSheet {
         }
 
         return result;
+    }
+
+    private static final String SELECT_NON_SCORED_REPORTS_SQL = "SELECT * FROM my_db_sheet WHERE genai_final_score = 0 ORDER BY id";
+    public List<SheetRow> getReportsWithNoQualityScore() {
+        List<SheetRow> result = new ArrayList<>();
+
+        try (PreparedStatement pstm = conn.prepareStatement(SELECT_NON_SCORED_REPORTS_SQL)) {
+            try (ResultSet rs = pstm.executeQuery()) {
+                while (rs.next()) {
+                    SheetRow row = parse(rs, SheetRow.class);
+                    result.add(row);
+                }
+            }
+        } catch (SQLException sqlEx) {
+            log.error("Error while loading data by report date", sqlEx);
+            throw new IllegalStateException(sqlEx);
+        }
+
+        return result;
+    }
+
+
+    private static final String SAVE_ANALYSIS_SQL = """
+            UPDATE my_db_sheet\s
+              SET\s
+                  genai_content_score = ?,
+                  genai_impact_score = ?,
+                  genai_proactivity_score = ?,
+                  genai_context_score = ?,
+                  genai_final_score = ?,
+                  genai_analysis_content = ?,
+                  genai_analysis_impact = ?,
+                  genai_analysis_proactivity = ?,
+                  genai_analysis_context = ?,
+                  genai_analysis_strength = ?,
+                  genai_analysis_improvements = ?
+              WHERE reporter_email = ? AND report_date = ?
+            """;
+
+    public void saveAnalysisIntoDB(SheetRow forRow, ReportAnalysis analysisResult) {
+        try (PreparedStatement pstm = conn.prepareStatement(SAVE_ANALYSIS_SQL)) {
+            pstm.setInt(1, analysisResult.getScores().getContentScore());
+            pstm.setInt(2, analysisResult.getScores().getImpactScore());
+            pstm.setInt(3, analysisResult.getScores().getProactivityScore());
+            pstm.setInt(4, analysisResult.getScores().getContextScore());
+            pstm.setDouble(5, analysisResult.getScores().getFinalScore());
+
+            pstm.setString(6, analysisResult.getAnalysis().getContentJustification());
+            pstm.setString(7, analysisResult.getAnalysis().getImpactJustification());
+            pstm.setString(8, analysisResult.getAnalysis().getProactivityJustification());
+            pstm.setString(9, analysisResult.getAnalysis().getContextJustification());
+
+            pstm.setString(10, analysisResult.getRecommendations().getStrengthOneString());
+            pstm.setString(11, analysisResult.getRecommendations().getImprovementsOneString());
+
+            pstm.setString(12, forRow.getEmail());
+            pstm.setString(13, forRow.getWeekStartDate());
+
+            int rowsUpdated = pstm.executeUpdate();
+            if (rowsUpdated != 1) throw new SQLException("Unexpected number of updated row. Exp value = 1, act value = " + rowsUpdated);
+        } catch (SQLException sqlEx) {
+            log.error("Error while loading data by report date", sqlEx);
+            throw new IllegalStateException(sqlEx);
+        }
     }
 }

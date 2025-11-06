@@ -13,9 +13,9 @@ public class WeeklyReportAnalyzer extends AbstractActiveJob {
     protected void runAsync(AppProperties appProperties, MatterMostClientHelper mmHelper, Connection conn) {
         WRHelper wrHelper = new WRHelper(appProperties, mmHelper, conn);
         wrHelper.loadLatestDataFromGoogleSheet();
-        // wrHelper.friendlyNotifyAllToSendReportIfTodayIsEndOf(FRIDAY);
+        wrHelper.friendlyNotifyAllToSendReportIfTodayIsEndOf(FRIDAY);
         wrHelper.angryNotifyToSendMissedReports();
-        //wrHelper.calculateReportQualityPerPersonAndProvideFeedbackIfTodayIfNoonOf(TUESDAY);
-        // wrHelper.sendReportToManagementIfTodayIsNoonOf(TUESDAY);
+        wrHelper.calculateReportQualityPerPersonAndProvideFeedbackIfTodayIfNoonOf(TUESDAY);
+        wrHelper.sendReportToManagementIfTodayIsNoonOf(TUESDAY);
     }
 }
