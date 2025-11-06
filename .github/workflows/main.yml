@@ -63,7 +63,7 @@ jobs:
           cd /tmp/WORKDIR                    
           
           echo "${{ secrets.APP_PROPERTIES_FILE }}" > app.properties
-          echo "${{ secrets.ALL_QS_MEMBERS }}" > all_qs_members.json
+          echo '${{ secrets.ALL_QS_MEMBERS }}' > all_qs_members.json
           java -jar vsec.jar ./app.properties
           mkdir -p ${CURRENT_DIR}/data
           cp ./data/mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
