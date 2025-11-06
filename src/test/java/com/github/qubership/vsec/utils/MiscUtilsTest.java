@@ -3,7 +3,8 @@ package com.github.qubership.vsec.utils;
 import com.netcracker.qubership.vsec.utils.MiscUtils;
 import org.junit.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.Assert.assertEquals;
+
 
 public class MiscUtilsTest {
 
