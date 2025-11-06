@@ -82,4 +82,10 @@ public class AppProperties {
 
     @JsonProperty(value = "version")
     private String version;
+
+    @JsonProperty(value = "DEEP-SEEK-URL")
+    private String deepSeekUrl;
+
+    @JsonProperty(value = "DEEP-SEEK-TOKEN")
+    private String deepSeekToken;
 }

@@ -1,25 +1,29 @@
-package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper_models;
+package com.netcracker.qubership.vsec.db;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+@Getter @Setter
 public class SheetRow {
     private static final DateTimeFormatter DATE_FORMATTER_CREATED_WHEN = DateTimeFormatter.ofPattern("dd.MM.yyyy H:mm:ss");
     private static final DateTimeFormatter DATE_FORMATTER_REPORT_FOR_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
-
     @JsonProperty("timestamp")
     @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
+    @MyDBColumn("created_when")
     private LocalDateTime timestamp;
 
     @JsonProperty("fullName")
+    @MyDBColumn("reporter_name")
     private String fullName;
 
     @JsonProperty("blueStreamLead")
@@ -27,25 +31,73 @@ public class SheetRow {
 
     @JsonProperty("weekStartDate")
     @JsonFormat(pattern = "dd.MM.yyyy")
+    @MyDBColumn("report_date")
     private String weekStartDate;
 
     @JsonProperty("completedWork")
+    @MyDBColumn("msg_done")
     private String completedWork;
 
     @JsonProperty("nextWeekPlans")
+    @MyDBColumn("msg_plans")
     private String nextWeekPlans;
 
     @JsonProperty("email")
+    @MyDBColumn("reporter_email")
     private String email;
 
     @JsonIgnore
     private LocalDate weekStartDateAsLocalDate;
 
+    @JsonIgnore
+    @MyDBColumn("genai_content_score")
+    private Integer genAIContentScore;
+
+    @JsonIgnore
+    @MyDBColumn("genai_impact_score")
+    private Integer genAIImpactScore;
+
+    @JsonIgnore
+    @MyDBColumn("genai_proactivity_score")
+    private Integer genAIProactivityScore;
+
+    @JsonIgnore
+    @MyDBColumn("genai_context_score")
+    private Integer genAIContextScore;
+
+    @JsonIgnore
+    @MyDBColumn("genai_final_score")
+    private Integer genAIFinalScore;
+
+    @JsonIgnore
+    @MyDBColumn("genai_analysis_content")
+    private String analysisContent;
+
+    @JsonIgnore
+    @MyDBColumn("genai_analysis_impact")
+    private String analysisImpact;
+
+    @JsonIgnore
+    @MyDBColumn("genai_analysis_proactivity")
+    private String analysisProactivity;
+
+    @JsonIgnore
+    @MyDBColumn("genai_analysis_context")
+    private String analysisContext;
+
+    @JsonIgnore
+    @MyDBColumn("genai_analysis_strength")
+    private String analysisStrengths;
+
+    @JsonIgnore
+    @MyDBColumn("genai_analysis_improvements")
+    private String analysisImprovements;
+
     // Default constructor
     public SheetRow() {
     }
 
-    // Constructor for creating from string array (useful for parsing)
+    // Constructor for creating from string array (useful for parsing) which comes from Google Sheets
     @JsonCreator
     public SheetRow(List<String> rowData) {
         if (rowData != null && rowData.size() >= 7) {
@@ -57,63 +109,6 @@ public class SheetRow {
             this.nextWeekPlans = rowData.get(5);
             this.email = rowData.get(6);
         }
-    }
-
-    // Getters and setters
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getBlueStreamLead() {
-        return blueStreamLead;
-    }
-
-    public void setBlueStreamLead(String blueStreamLead) {
-        this.blueStreamLead = blueStreamLead;
-    }
-
-    public String getWeekStartDate() {
-        return weekStartDate;
-    }
-
-    public void setWeekStartDate(String weekStartDate) {
-        this.weekStartDate = weekStartDate;
-    }
-
-    public String getCompletedWork() {
-        return completedWork;
-    }
-
-    public void setCompletedWork(String completedWork) {
-        this.completedWork = completedWork;
-    }
-
-    public String getNextWeekPlans() {
-        return nextWeekPlans;
-    }
-
-    public void setNextWeekPlans(String nextWeekPlans) {
-        this.nextWeekPlans = nextWeekPlans;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
     }
 
     public LocalDate getWeekStartDateAsLocalDate() {
