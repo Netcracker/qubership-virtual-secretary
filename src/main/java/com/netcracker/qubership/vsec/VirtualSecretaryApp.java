@@ -67,6 +67,8 @@ public class VirtualSecretaryApp {
             log.error("Error while working with DB. Terminating application.", sqlEx);
             System.exit(1);
         }
+
+        System.exit(0);
     }
 
     private static void fakeRun(String[] args) {

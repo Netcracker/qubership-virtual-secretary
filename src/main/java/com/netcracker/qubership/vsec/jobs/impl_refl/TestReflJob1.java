@@ -7,11 +7,11 @@ import net.bis5.mattermost.model.Post;
 public class TestReflJob1 extends AbstractReflectiveJob {
     @Override
     public void onMessage(Post post) {
-        System.out.println("post1");
+        // implement your logic here to process messages sent to Bot
     }
 
     @Override
     public void onOther(IMattermostEvent post) {
-        System.out.println("onOther1");
+        // implement your logic here to process events sent to Bot
     }
 }

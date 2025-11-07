@@ -10,8 +10,6 @@ import java.sql.Connection;
 public class CheckAllUsersInMattermostHaveCorrectEmails extends AbstractActiveJob {
     @Override
     protected void runAsync(AppProperties appProperties, MatterMostClientHelper mmHelper, Connection conn) {
-        getLog().info("Start thread {}", appProperties.getMmHost());
-        MiscUtils.sleep(500);
-        System.out.println("End thread");
+        // todo: to be implemented later
     }
 }
