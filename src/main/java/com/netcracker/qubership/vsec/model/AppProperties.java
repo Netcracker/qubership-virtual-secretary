@@ -22,13 +22,6 @@ public class AppProperties {
     private String mmToken;
 
     /**
-     * In case has any positive value - the application will be terminated automatically
-     * on time passed. Useful for local development.
-     */
-    @JsonProperty(value = "APP_AUTO_TERMINATION_DELAY_IN_SECONDS", defaultValue = "0")
-    private Long autoTerminationDelayInSeconds;
-
-    /**
      * All replies of the team are collected into some google sheet.
      * So here we specify the ID of Google sheet to download data from
      */
@@ -83,12 +76,22 @@ public class AppProperties {
     @JsonProperty(value = "version")
     private String version;
 
+    /**
+     * URL of OpenAI-compatible API to be used for scoring of weekly reports using GenAI.
+     * DeepSeek is used currently.
+     */
     @JsonProperty(value = "DEEP-SEEK-URL")
     private String deepSeekUrl;
 
+    /**
+     * Access token to call openAI-compatible API
+     */
     @JsonProperty(value = "DEEP-SEEK-TOKEN")
     private String deepSeekToken;
 
+    /**
+     * Link to Google Forms Form. Currently, the URL is used in text messages to help team members remind it.
+     */
     @JsonProperty(value = "WEEKLY_REPORT_GOOGLE_FORM_URL")
     private String weeklyReportFormUrl;
 }

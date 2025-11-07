@@ -1,11 +1,8 @@
 package com.netcracker.qubership.vsec.jobs;
 
-import com.netcracker.qubership.vsec.jobs.impl_act.AutoTerminateApp;
 import com.netcracker.qubership.vsec.jobs.impl_act.CheckAllUsersInMattermostHaveCorrectEmails;
 import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.WeeklyReportAnalyzer;
 import com.netcracker.qubership.vsec.jobs.impl_refl.TestReflJob1;
-import com.netcracker.qubership.vsec.jobs.impl_refl.TestReflJob2;
-import com.netcracker.qubership.vsec.jobs.impl_refl.TestReflJob3;
 import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import org.slf4j.Logger;
@@ -14,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.sql.Connection;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -32,11 +30,9 @@ public class AllJobsRegistry {
     public AllJobsRegistry() {
         registeredActiveJobs.add(new CheckAllUsersInMattermostHaveCorrectEmails());
         registeredActiveJobs.add(new WeeklyReportAnalyzer());
-        registeredActiveJobs.add(new AutoTerminateApp());
+
 
         registeredReflectiveJobs.add(new TestReflJob1());
-        registeredReflectiveJobs.add(new TestReflJob2());
-        registeredReflectiveJobs.add(new TestReflJob3());
     }
 
     public List<AbstractReflectiveJob> getRegisteredReflectiveJobs() {
@@ -44,17 +40,21 @@ public class AllJobsRegistry {
     }
 
     public void runAllActiveJobs(AppProperties appProperties, MatterMostClientHelper client, Connection connection) {
+        final CountDownLatch countDownLatch = new CountDownLatch(registeredActiveJobs.size());
+
         try (ExecutorService executor = Executors.newFixedThreadPool(registeredActiveJobs.size())) {
 
             for (AbstractActiveJob aJob : registeredActiveJobs) {
-                executor.execute(
-                        aJob.withContext(appProperties).withMattermostClient(client).withConnectionToDB(connection)
+                executor.execute(aJob
+                        .withContext(appProperties)
+                        .withMattermostClient(client)
+                        .withConnectionToDB(connection)
+                        .notifyingCountDownLatchAfterCompletion(countDownLatch)
                 );
             }
-            executor.shutdown();
 
-            boolean isGraceShutdown = executor.awaitTermination(TIMEOUT_VALUE, TIMEOUT_UNIT);
-            log.info("All jobs were {}", isGraceShutdown ? "completed normally" : "terminated by timeout");
+            countDownLatch.await();
+            executor.shutdown();
         } catch (InterruptedException ex) {
             log.error("Error while jobs executing", ex);
         }
