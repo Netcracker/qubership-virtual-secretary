@@ -88,4 +88,7 @@ public class AppProperties {
 
     @JsonProperty(value = "DEEP-SEEK-TOKEN")
     private String deepSeekToken;
+
+    @JsonProperty(value = "WEEKLY_REPORT_GOOGLE_FORM_URL")
+    private String weeklyReportFormUrl;
 }

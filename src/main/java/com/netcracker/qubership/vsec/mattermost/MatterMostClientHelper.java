@@ -84,6 +84,11 @@ public class MatterMostClientHelper {
         mmClient.createPost(post);
     }
 
+    public void sendMessage(String msg, User toUser) {
+        String channelId = defineChannelId(getBotProfile(), toUser);
+        sendMessage(msg, channelId);
+    }
+
     public List<User> getAllUsers() {
         List<User> allUsers = new ArrayList<>();
 

@@ -9,9 +9,11 @@ import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper.SheetDa
 import com.netcracker.qubership.vsec.db.SheetRow;
 import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
+import com.netcracker.qubership.vsec.model.team.QSMember;
 import com.netcracker.qubership.vsec.model.team.QSTeam;
 import com.netcracker.qubership.vsec.model.team.QSTeamLoader;
 import com.netcracker.qubership.vsec.utils.MiscUtils;
+import net.bis5.mattermost.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,11 +84,41 @@ class WRHelper {
     }
 
     /**
-     *
-     * @param dayOfWeek
+     * Notifies user to provide a report for the passed week.
+     * A special mark in persistent map is set after successful notification - to avoid redundant
+     * notifications in future
      */
-    void friendlyNotifyAllToSendReportIfTodayIsEndOf(DayOfWeek dayOfWeek) {
+    void friendlyNotifyAllToSendWeeklyReports() {
+        // Find nearest friday we need to notify on
+        LocalDate today = LocalDate.now();
+        while (!today.getDayOfWeek().equals(DayOfWeek.FRIDAY)) today = today.minusDays(1);
 
+        // Check if notification for calculated friday was done already
+
+        final String notificationMsg = """
+                Good day  :raised_hand_with_fingers_splayed:\s
+                Don't forget to fill a weekly report today using %s form.
+                Thank you!
+                """.formatted(appProperties.getWeeklyReportFormUrl());
+
+
+        // do notification
+        QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties.getQubershipTeamConfigFile());
+        for (QSMember member : qsTeam.getMembers()) {
+            String key = "FRIENDLY NOTIFICATION at " + today + " for " + member.getEmail();
+            String value = myDBMap.getValue(key);
+            if ("done".equals(value)) {
+                log.info("User {} is already friendly notified to fill the weekly report today, selected Friday = {}", member.getEmail(), today);
+                continue;
+            }
+
+            User user = mmHelper.getUserByEmail(member.getEmail());
+            mmHelper.sendMessage(notificationMsg, user);
+            log.info("User {} is friendly notified to fill the weekly report today", member.getEmail());
+
+            myDBMap.setValue(key, "done");
+            myDBMap.saveAllToDB();
+        }
     }
 
     private static final LocalDate FROM_DATE = LocalDate.of(2025, 10, 20);
@@ -134,7 +166,7 @@ class WRHelper {
     /**
      *
      */
-    void calculateReportQualityPerPersonAndProvideFeedbackIfTodayIfNoonOf(DayOfWeek dayOfWeek) {
+    void calculateExistedReportsQuality() {
         DeepSeekCaller deepSeekCaller = new DeepSeekCaller(appProperties.getDeepSeekUrl(), appProperties.getDeepSeekToken());
         if (!deepSeekCaller.doSmokeTest()) {
             log.error("Deepseek smoke test is not passed. Please check settings & token");
@@ -240,6 +272,14 @@ class WRHelper {
         try (InputStream inputStream = url.openStream()) {
             return mapper.readValue(inputStream, SheetData.class);
         }
+    }
+
+    /**
+     * If there are reports with quality score ready - then we need notify reported about calculated score
+     *
+     */
+    void sendFeedbacksToReporters() {
+
     }
 
 
