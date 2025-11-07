@@ -16,6 +16,7 @@ public class WeeklyReportAnalyzer extends AbstractActiveJob {
         wrHelper.friendlyNotifyAllToSendWeeklyReports();
         wrHelper.angryNotifyToSendMissedReports();
         wrHelper.calculateExistedReportsQuality();
+        wrHelper.sendFeedbacksToReporters();
         wrHelper.sendReportToManagementIfTodayIsNoonOf(TUESDAY);
     }
 }

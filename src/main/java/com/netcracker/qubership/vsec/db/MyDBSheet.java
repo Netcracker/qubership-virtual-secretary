@@ -311,4 +311,24 @@ public class MyDBSheet {
             throw new IllegalStateException(sqlEx);
         }
     }
+
+    // todo: refactor to getSheetRowsBySql(String)
+    private static final String SELECT_REPORTS_WITH_FINAL_SCORE_SQL = "SELECT * FROM my_db_sheet WHERE genai_final_score > 0 ORDER BY report_date";
+    public List<SheetRow> getReportsWithQualityScore() {
+        List<SheetRow> result = new ArrayList<>();
+
+        try (PreparedStatement pstm = conn.prepareStatement(SELECT_REPORTS_WITH_FINAL_SCORE_SQL)) {
+            try (ResultSet rs = pstm.executeQuery()) {
+                while (rs.next()) {
+                    SheetRow row = parse(rs, SheetRow.class);
+                    result.add(row);
+                }
+            }
+        } catch (SQLException sqlEx) {
+            log.error("Error while loading data by report date", sqlEx);
+            throw new IllegalStateException(sqlEx);
+        }
+
+        return result;
+    }
 }
