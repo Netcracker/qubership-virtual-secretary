@@ -34,6 +34,7 @@ public class MiscUtils {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.readValue(jsonAsStr, clazz);
         } catch (JsonProcessingException e) {
+            log.error("Error while parsing string as json. Json = '{}'", jsonAsStr, e);
             throw new RuntimeException(e);
         }
     }

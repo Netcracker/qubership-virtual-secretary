@@ -279,7 +279,46 @@ class WRHelper {
      *
      */
     void sendFeedbacksToReporters() {
+        // step1: select rows where final_score > 0 order by report_date
+        // step2: check notification was not sent before
+        // step3: send message
+        // step4: store flag - notification was sent
 
+        List<SheetRow> rows = myDBSheet.getReportsWithQualityScore();
+        for (SheetRow row : rows) {
+            String key = "SCORES FOR REPORT " + row.getWeekStartDate() + " FOR " + row.getEmail();
+            String actValue = myDBMap.getValue(key);
+            if ("sent".equals(actValue)) continue;
+
+            String reportDate = row.getWeekStartDate();
+            String finalScores= row.getGenAIFinalScore().toString();
+            String strengths  = row.getAnalysisStrengths();
+            String recommendations = row.getAnalysisImprovements();
+            String reportText = row.getCompletedWork();
+
+            String msg = """
+                    :star2: Your report for the week **%s** was rated **%s out of 10**.
+                    Your good strengths in the report are:
+                    > %s
+                    
+                    Here are recommendations to be taken into account for future reports:
+                    > %s
+                    
+                    Original report text:
+                    ```text
+                    %s
+                    ```
+                    Thank you!
+                    """.formatted(reportDate, finalScores, strengths, recommendations, reportText);
+
+            User user = mmHelper.getUserByEmail(row.getEmail());
+            mmHelper.sendMessage(msg, user);
+
+            myDBMap.setValue(key, "sent");
+            myDBMap.saveAllToDB();
+
+            log.info("Notification about report scores for week {} was sent to user {}", reportDate, row.getEmail());
+        }
     }
 
 
