@@ -198,7 +198,9 @@ class WRHelper {
                   }
                 }
                 
-                The report to analyze goes next:
+                In case report text contains only references to external resources, is empty or there are other issues with report analysis - reply with requested format anyway.
+                
+                The report text to analyze goes next:
                 """;
 
         // select one next report to analyze
@@ -212,12 +214,14 @@ class WRHelper {
                 myDBSheet.saveAnalysisIntoDB(row, reportAnalysis);
 
                 log.info("DeepSeek answer = " + reportAnalysis);
-                break;
+                // break;
             } catch (Exception ex) {
                 log.error("Error while parsing string as json into ReportAnalysis class [{}]", jsonStr, ex);
                 throw new IllegalStateException(ex);
             }
         }
+
+        log.info("All reports are analyzed");
     }
 
     /**
