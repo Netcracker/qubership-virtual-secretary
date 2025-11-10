@@ -5,10 +5,8 @@ import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper.SheetDa
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Field;
 import java.sql.*;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -39,35 +37,6 @@ public class MyDBSheet {
                genai_analysis_improvements VARCHAR
            )
            """;
-    private static final String INSERT_SQL = """
-            INSERT INTO my_db_sheet (
-                created_when,\s
-                reporter_email,\s
-                reporter_name,\s
-                report_date,\s
-                msg_done,\s
-                msg_plans
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            """;
-
-    private static final String CLEAN_UP_OBSOLETE_SQL = """
-            DELETE FROM my_db_sheet\s
-            WHERE id NOT IN (
-                SELECT id FROM (
-                    SELECT id,
-                           reporter_email,
-                           report_date,
-                           created_when,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY reporter_email, report_date\s
-                               ORDER BY created_when DESC
-                           ) as rn
-                    FROM my_db_sheet
-                ) ranked
-                WHERE rn = 1
-            )
-            """;
-
 
     private final Connection conn;
 
@@ -82,6 +51,17 @@ public class MyDBSheet {
     }
 
     public int appendData(SheetData sheetData) {
+        final String INSERT_SQL = """
+            INSERT INTO my_db_sheet (
+                created_when,\s
+                reporter_email,\s
+                reporter_name,\s
+                report_date,\s
+                msg_done,\s
+                msg_plans
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """;
+
         int[] updates;
         try (PreparedStatement pstm = conn.prepareStatement(INSERT_SQL)) {
             for (SheetRow row : sheetData.getValues()) {
@@ -102,6 +82,24 @@ public class MyDBSheet {
         }
 
         // now do clean up of the obsolete records (i.e. which were overriden by reporter with new version of the report)
+        final String CLEAN_UP_OBSOLETE_SQL = """
+            DELETE FROM my_db_sheet\s
+            WHERE id NOT IN (
+                SELECT id FROM (
+                    SELECT id,
+                           reporter_email,
+                           report_date,
+                           created_when,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY reporter_email, report_date\s
+                               ORDER BY created_when DESC
+                           ) as rn
+                    FROM my_db_sheet
+                ) ranked
+                WHERE rn = 1
+            )
+            """;
+
         try (PreparedStatement pstm = conn.prepareStatement(CLEAN_UP_OBSOLETE_SQL)) {
             int numOfCleanedUpRows = pstm.executeUpdate();
             log.info("{} of obsolete records where cleaned up", numOfCleanedUpRows);
@@ -113,108 +111,8 @@ public class MyDBSheet {
     }
 
     public List<SheetRow> loadByReportDate(LocalDate dateOfWeekBegining) {
-        List<SheetRow> result = new ArrayList<>();
-
-        try (PreparedStatement pstm = conn.prepareStatement("select * from my_db_sheet where report_date = ?")) {
-            pstm.setString(1, dateOfWeekBegining.toString());
-
-            try (ResultSet rs = pstm.executeQuery()) {
-                while (rs.next()) {
-                    SheetRow row = parse(rs, SheetRow.class);
-                    result.add(row);
-                }
-            }
-        } catch (SQLException sqlEx) {
-            log.error("Error while loading data by report date", sqlEx);
-            throw new IllegalStateException(sqlEx);
-        }
-
-        return result;
-    }
-
-    /**
-     * Parses a ResultSet and maps columns to object fields using @DBProperty annotation
-     * @param resultSet The ResultSet to read data from
-     * @param clazz The class of the object to create and populate
-     * @return A new instance of the class with fields populated from ResultSet
-     */
-    private static <T> T parse(ResultSet resultSet, Class<T> clazz) {
-        try {
-            // Create new instance of the class
-            T instance = clazz.getDeclaredConstructor().newInstance();
-
-            // Get all declared fields of the class
-            Field[] fields = clazz.getDeclaredFields();
-
-            for (Field field : fields) {
-                // Check if field has @DBProperty annotation
-                if (field.isAnnotationPresent(MyDBColumn.class)) {
-                    MyDBColumn dbProperty = field.getAnnotation(MyDBColumn.class);
-                    String columnName = dbProperty.value();
-
-                    // Make the field accessible (in case it's private)
-                    field.setAccessible(true);
-
-                    // Get value from ResultSet and set it to the field
-                    Object value = resultSet.getObject(columnName);
-
-                    // Handle null values appropriately
-                    if (value != null) {
-                        // Convert the value to the field's type if necessary
-                        value = convertValue(value, field.getType());
-                        field.set(instance, value);
-                    }
-                }
-            }
-
-            return instance;
-
-        } catch (Exception e) {
-            throw new RuntimeException("Error parsing ResultSet to object", e);
-        }
-    }
-
-    /**
-     * Converts the database value to the appropriate Java type
-     */
-    private static Object convertValue(Object value, Class<?> targetType) {
-        if (value == null) {
-            return null;
-        }
-
-        // If types already match, return as is
-        if (targetType.isInstance(value)) {
-            return value;
-        }
-
-        // Handle common type conversions
-        if (targetType == Integer.class || targetType == int.class) {
-            if (value instanceof Number) {
-                return ((Number) value).intValue();
-            } else if (value instanceof String) {
-                return Integer.parseInt((String) value);
-            }
-        } else if (targetType == Long.class || targetType == long.class) {
-            if (value instanceof Number) {
-                return ((Number) value).longValue();
-            } else if (value instanceof String) {
-                return Long.parseLong((String) value);
-            }
-        } else if (targetType == Double.class || targetType == double.class) {
-            if (value instanceof Number) {
-                return ((Number) value).doubleValue();
-            } else if (value instanceof String) {
-                return Double.parseDouble((String) value);
-            }
-        } else if (targetType == LocalDateTime.class) {
-            return LocalDateTime.parse((String) value);
-        } else if (targetType == String.class) {
-            return value.toString();
-        }
-
-        // If no conversion is possible, return the original value
-        // This might throw a ClassCastException later, which is acceptable
-        return value;
+        final String LOAD_REPORTS_BY_DATE = "select * from my_db_sheet where report_date = ?";
+        return loadByQuery(LOAD_REPORTS_BY_DATE, dateOfWeekBegining.toString());
     }
 
     /**
@@ -225,7 +123,6 @@ public class MyDBSheet {
      */
     public Map<String, List<LocalDate>> findMissedReportRecords(List<String> teamEmails, LocalDate dateFromInc, LocalDate dateTillInc) {
         Map<String, List<LocalDate>> result = new HashMap<>();
-
 
         LocalDate curDate = dateFromInc;
         while (curDate.isBefore(dateTillInc) || curDate.equals(dateTillInc)) {
@@ -248,23 +145,9 @@ public class MyDBSheet {
         return result;
     }
 
-    private static final String SELECT_NON_SCORED_REPORTS_SQL = "SELECT * FROM my_db_sheet WHERE genai_final_score = 0 ORDER BY id";
     public List<SheetRow> getReportsWithNoQualityScore() {
-        List<SheetRow> result = new ArrayList<>();
-
-        try (PreparedStatement pstm = conn.prepareStatement(SELECT_NON_SCORED_REPORTS_SQL)) {
-            try (ResultSet rs = pstm.executeQuery()) {
-                while (rs.next()) {
-                    SheetRow row = parse(rs, SheetRow.class);
-                    result.add(row);
-                }
-            }
-        } catch (SQLException sqlEx) {
-            log.error("Error while loading data by report date", sqlEx);
-            throw new IllegalStateException(sqlEx);
-        }
-
-        return result;
+        final String SELECT_NON_SCORED_REPORTS_SQL = "SELECT * FROM my_db_sheet WHERE genai_final_score = 0 ORDER BY id";
+        return loadByQuery(SELECT_NON_SCORED_REPORTS_SQL);
     }
 
 
@@ -312,20 +195,31 @@ public class MyDBSheet {
         }
     }
 
-    // todo: refactor to getSheetRowsBySql(String)
-    private static final String SELECT_REPORTS_WITH_FINAL_SCORE_SQL = "SELECT * FROM my_db_sheet WHERE genai_final_score > 0 ORDER BY report_date";
     public List<SheetRow> getReportsWithQualityScore() {
+        final String SELECT_REPORTS_WITH_FINAL_SCORE_SQL = "SELECT * FROM my_db_sheet WHERE genai_final_score > 0 ORDER BY report_date";
+        return loadByQuery(SELECT_REPORTS_WITH_FINAL_SCORE_SQL);
+    }
+
+    private List<SheetRow> loadByQuery(String selectQuery, Object... bindParameters) {
         List<SheetRow> result = new ArrayList<>();
 
-        try (PreparedStatement pstm = conn.prepareStatement(SELECT_REPORTS_WITH_FINAL_SCORE_SQL)) {
+        try (PreparedStatement pstm = conn.prepareStatement(selectQuery)) {
+            if (bindParameters != null) {
+                int index = 1;
+                for (var bind : bindParameters) {
+                    DBHelper.setBind(index, bind, pstm);
+                    index++;
+                }
+            }
+
             try (ResultSet rs = pstm.executeQuery()) {
                 while (rs.next()) {
-                    SheetRow row = parse(rs, SheetRow.class);
+                    SheetRow row = DBHelper.parse(rs, SheetRow.class);
                     result.add(row);
                 }
             }
         } catch (SQLException sqlEx) {
-            log.error("Error while loading data by report date", sqlEx);
+            log.error("Error while loading data using sql query = {} with bind parameters = {}", selectQuery, bindParameters, sqlEx);
             throw new IllegalStateException(sqlEx);
         }
 

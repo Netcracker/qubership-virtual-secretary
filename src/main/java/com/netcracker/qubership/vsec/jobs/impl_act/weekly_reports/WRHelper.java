@@ -146,7 +146,7 @@ class WRHelper {
         List<String> emails = qsTeam.getAllEmails();
         Map<String, List<LocalDate>> missedReports = myDBSheet.findMissedReportRecords(emails, FROM_DATE, dateToProceedTill);
 
-        log.info("Number of missed repositories = {}", missedReports.size());
+        log.info("Number of non-received reports = {}", missedReports.size());
 
         for (var me : missedReports.entrySet()) {
             String email  = me.getKey();
@@ -269,11 +269,14 @@ class WRHelper {
     }
 
     /**
+     * Collects overall status, prints table in MD format and sents it to management channel
+     * Table format is follow:
+     * Reporter-Email | Date1| Date2| ...
+     * ...............| Status or Score value | ...
      *
-     * @param dayOfWeek
      */
-    void sendReportToManagementIfTodayIsNoonOf(DayOfWeek dayOfWeek) {
-
+    void sendReportToManagementChannel() {
+        //
     }
 
     public static SheetData downloadWeeklyReportsData(String urlStr) throws Exception {
