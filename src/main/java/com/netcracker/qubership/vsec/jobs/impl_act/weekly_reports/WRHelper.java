@@ -137,6 +137,11 @@ class WRHelper {
         LocalDate dateToProceedTill = LocalDate.now().minusWeeks(1);
         while (!dateToProceedTill.getDayOfWeek().equals(DayOfWeek.MONDAY)) dateToProceedTill = dateToProceedTill.minusDays(1);
 
+        final String ANGRY_NOTIFICATION_MSG = """
+                :warning: You still have not sent report for %s week.\s
+                Please do it ASAP using %s form.
+                """;
+
         QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties.getQubershipTeamConfigFile());
         List<String> emails = qsTeam.getAllEmails();
         Map<String, List<LocalDate>> missedReports = myDBSheet.findMissedReportRecords(emails, FROM_DATE, dateToProceedTill);
@@ -156,6 +161,11 @@ class WRHelper {
 
                 value = WARN_VALUE + LocalDate.now();
                 log.info("Sending notification to a user for missed report: email = {} for date = {}: {}", me.getKey(), me.getValue(), value);
+
+                User user = mmHelper.getUserByEmail(email);
+                String msg = ANGRY_NOTIFICATION_MSG.formatted(me.getValue(), appProperties.getWeeklyReportFormUrl());
+                mmHelper.sendMessage(msg, user);
+
                 myDBMap.setValue(key, value);
             }
 
