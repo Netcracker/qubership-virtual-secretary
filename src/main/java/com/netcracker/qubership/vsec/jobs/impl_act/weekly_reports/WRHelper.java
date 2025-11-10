@@ -146,6 +146,8 @@ class WRHelper {
         List<String> emails = qsTeam.getAllEmails();
         Map<String, List<LocalDate>> missedReports = myDBSheet.findMissedReportRecords(emails, FROM_DATE, dateToProceedTill);
 
+        log.info("Number of missed repositories = {}", missedReports.size());
+
         for (var me : missedReports.entrySet()) {
             String email  = me.getKey();
             List<LocalDate> dates = me.getValue();
@@ -154,7 +156,7 @@ class WRHelper {
                 String key = email + " for " + date;
                 String value = myDBMap.getValue(key);
                 if (value != null) {
-                    log.debug("User {} was already notified for missed report date = {}: {}", email, date, value);
+                    log.info("User {} was already notified for missed report date = {}: {}", email, date, value);
                     continue;
                 }
 
