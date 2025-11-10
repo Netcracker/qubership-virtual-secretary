@@ -3,8 +3,11 @@ package com.netcracker.qubership.vsec.db;
 import java.lang.reflect.Field;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 public class DBHelper {
     static void setBind(int index, Object value, PreparedStatement pstm) throws SQLException {
@@ -68,7 +71,8 @@ public class DBHelper {
     }
 
     /**
-     * Parses a ResultSet and maps columns to object fields using @DBProperty annotation
+     * Parses a ResultSet and maps columns to object fields using @DBProperty annotation.
+     * If necessary column is absent in the selected set - then it will be ignored, i.e. null value will be set.
      * @param resultSet The ResultSet to read data from
      * @param clazz The class of the object to create and populate
      * @return A new instance of the class with fields populated from ResultSet
@@ -80,12 +84,14 @@ public class DBHelper {
 
             // Get all declared fields of the class
             Field[] fields = clazz.getDeclaredFields();
+            Set<String> loadedColumnNames = getColumnNames(resultSet);
 
             for (Field field : fields) {
                 // Check if field has @DBProperty annotation
                 if (field.isAnnotationPresent(MyDBColumn.class)) {
                     MyDBColumn dbProperty = field.getAnnotation(MyDBColumn.class);
                     String columnName = dbProperty.value();
+                    if (!loadedColumnNames.contains(columnName.toUpperCase())) continue;
 
                     // Make the field accessible (in case it's private)
                     field.setAccessible(true);
@@ -107,5 +113,17 @@ public class DBHelper {
         } catch (Exception e) {
             throw new RuntimeException("Error parsing ResultSet to object", e);
         }
+    }
+
+    static Set<String> getColumnNames(ResultSet rs)throws SQLException {
+        Set<String> result = new HashSet<>();
+
+        ResultSetMetaData metaData = rs.getMetaData();
+        int columnCount = metaData.getColumnCount();
+        for (int i = 1; i <= columnCount; i++) {
+            result.add(metaData.getColumnName(i).toUpperCase());
+        }
+
+        return result;
     }
 }

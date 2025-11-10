@@ -200,7 +200,7 @@ public class MyDBSheet {
         return loadByQuery(SELECT_REPORTS_WITH_FINAL_SCORE_SQL);
     }
 
-    private List<SheetRow> loadByQuery(String selectQuery, Object... bindParameters) {
+    public List<SheetRow> loadByQuery(String selectQuery, Object... bindParameters) {
         List<SheetRow> result = new ArrayList<>();
 
         try (PreparedStatement pstm = conn.prepareStatement(selectQuery)) {
