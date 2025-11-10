@@ -2,10 +2,14 @@ package com.netcracker.qubership.vsec.db;
 
 import com.netcracker.qubership.vsec.deepseek.ReportAnalysis;
 import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper.SheetData;
+import com.netcracker.qubership.vsec.model.team.QSMember;
+import com.netcracker.qubership.vsec.model.team.QSTeam;
+import com.netcracker.qubership.vsec.utils.MiscUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.sql.*;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,27 +20,27 @@ public class MyDBSheet {
     private static final Logger log = LoggerFactory.getLogger(MyDBSheet.class);
 
     private static final String CREATE_TABLE_SQL = """
-             CREATE TABLE IF NOT EXISTS my_db_sheet (
-               id INT AUTO_INCREMENT PRIMARY KEY,
-               created_when VARCHAR(50) NOT NULL,
-               reporter_email VARCHAR(255) NOT NULL,
-               reporter_name VARCHAR(100),
-               report_date VARCHAR(50) NOT NULL,
-               msg_done VARCHAR,
-               msg_plans VARCHAR,
-               genai_content_score INT DEFAULT 0,
-               genai_impact_score INT DEFAULT 0,
-               genai_proactivity_score INT DEFAULT 0,
-               genai_context_score INT DEFAULT 0,
-               genai_final_score INT DEFAULT 0,
-               genai_analysis_content VARCHAR,
-               genai_analysis_impact VARCHAR,
-               genai_analysis_proactivity VARCHAR,
-               genai_analysis_context VARCHAR,
-               genai_analysis_strength VARCHAR,
-               genai_analysis_improvements VARCHAR
-           )
-           """;
+              CREATE TABLE IF NOT EXISTS my_db_sheet (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                created_when VARCHAR(50) NOT NULL,
+                reporter_email VARCHAR(255) NOT NULL,
+                reporter_name VARCHAR(100),
+                report_date VARCHAR(50) NOT NULL,
+                msg_done VARCHAR,
+                msg_plans VARCHAR,
+                genai_content_score INT DEFAULT 0,
+                genai_impact_score INT DEFAULT 0,
+                genai_proactivity_score INT DEFAULT 0,
+                genai_context_score INT DEFAULT 0,
+                genai_final_score INT DEFAULT 0,
+                genai_analysis_content VARCHAR,
+                genai_analysis_impact VARCHAR,
+                genai_analysis_proactivity VARCHAR,
+                genai_analysis_context VARCHAR,
+                genai_analysis_strength VARCHAR,
+                genai_analysis_improvements VARCHAR
+            )
+            """;
 
     private final Connection conn;
 
@@ -50,17 +54,24 @@ public class MyDBSheet {
         }
     }
 
+    /**
+     * Stores data from the model into database.
+     * In case updated reports were added - the same date-reports obsolete records will be cleaned up
+     *
+     * @param sheetData
+     * @return
+     */
     public int appendData(SheetData sheetData) {
         final String INSERT_SQL = """
-            INSERT INTO my_db_sheet (
-                created_when,\s
-                reporter_email,\s
-                reporter_name,\s
-                report_date,\s
-                msg_done,\s
-                msg_plans
-            ) VALUES (?, ?, ?, ?, ?, ?)
-            """;
+                INSERT INTO my_db_sheet (
+                    created_when,\s
+                    reporter_email,\s
+                    reporter_name,\s
+                    report_date,\s
+                    msg_done,\s
+                    msg_plans
+                ) VALUES (?, ?, ?, ?, ?, ?)
+                """;
 
         int[] updates;
         try (PreparedStatement pstm = conn.prepareStatement(INSERT_SQL)) {
@@ -81,24 +92,26 @@ public class MyDBSheet {
             throw new IllegalStateException(sqlEx);
         }
 
+        final int addedRecordsCount = updates.length;
+
         // now do clean up of the obsolete records (i.e. which were overriden by reporter with new version of the report)
         final String CLEAN_UP_OBSOLETE_SQL = """
-            DELETE FROM my_db_sheet\s
-            WHERE id NOT IN (
-                SELECT id FROM (
-                    SELECT id,
-                           reporter_email,
-                           report_date,
-                           created_when,
-                           ROW_NUMBER() OVER (
-                               PARTITION BY reporter_email, report_date\s
-                               ORDER BY created_when DESC
-                           ) as rn
-                    FROM my_db_sheet
-                ) ranked
-                WHERE rn = 1
-            )
-            """;
+                DELETE FROM my_db_sheet\s
+                WHERE id NOT IN (
+                    SELECT id FROM (
+                        SELECT id,
+                               reporter_email,
+                               report_date,
+                               created_when,
+                               ROW_NUMBER() OVER (
+                                   PARTITION BY reporter_email, report_date\s
+                                   ORDER BY created_when DESC
+                               ) as rn
+                        FROM my_db_sheet
+                    ) ranked
+                    WHERE rn = 1
+                )
+                """;
 
         try (PreparedStatement pstm = conn.prepareStatement(CLEAN_UP_OBSOLETE_SQL)) {
             int numOfCleanedUpRows = pstm.executeUpdate();
@@ -107,7 +120,68 @@ public class MyDBSheet {
             log.error("Error while executing clean-up procedure", sqlEx);
         }
 
-        return updates.length;
+
+        return addedRecordsCount;
+    }
+
+
+    public void correctMistakesInDB(QSTeam qsTeam) {
+        // correct dates to nearest Mondays:
+        // if Sunday is selected then next nearest Monday will be set
+        // if other day of week is selected then previous nearest Monday is set
+        List<SheetRow> allRows = loadByQuery("select ID, REPORT_DATE from my_db_sheet");
+        Map<String, String> mistakesMap = new HashMap<>(); // ID -> correct date
+
+        for (var row : allRows) {
+            LocalDate date = LocalDate.parse(row.getWeekStartDate());
+            if (!date.getDayOfWeek().equals(DayOfWeek.MONDAY)) {
+                if (date.getDayOfWeek().equals(DayOfWeek.SUNDAY)) date = date.plusDays(1);
+                while (!date.getDayOfWeek().equals(DayOfWeek.MONDAY)) date = date.minusDays(1);
+                mistakesMap.put(row.getId(), date.toString());
+            }
+        }
+
+        if (!mistakesMap.isEmpty()) {
+            final String updateQuery = "update my_db_sheet set report_date = ? where id = ?";
+
+            try (PreparedStatement pstm = conn.prepareStatement(updateQuery)) {
+
+                for (var me : mistakesMap.entrySet()) {
+                    pstm.setString(1, me.getValue());
+                    pstm.setInt(2, Integer.parseInt(me.getKey()));
+                    pstm.addBatch();
+
+                    log.info("Correcting date in database to new value '{}' for ID = {}", me.getValue(), me.getKey());
+                }
+
+                pstm.executeBatch();
+            } catch (SQLException sqlEx) {
+                log.error("Error while executing DML to save data into table", sqlEx);
+                throw new IllegalStateException(sqlEx);
+            }
+
+            log.info("{} number of incorrect dates were corrected", mistakesMap.size());
+        }
+
+        // if alternative emails were used - then set main ones into DB
+        final String updateEmailQuery = "update my_db_sheet set reporter_email = ? where reporter_email = ?";
+        try (PreparedStatement pstm = conn.prepareStatement(updateEmailQuery)) {
+            for (QSMember member : qsTeam.getMembers()) {
+                String altEmail = member.getAltEmail();
+                if (MiscUtils.isEmpty(altEmail)) continue;
+
+                pstm.setString(1, member.getEmail());
+                pstm.setString(2, altEmail);
+                pstm.addBatch();
+
+                log.info("Changing submitted alternative email from {} to base {}", altEmail, member.getEmail());
+            }
+
+            pstm.executeUpdate();
+        } catch (SQLException sqlEx) {
+            log.error("Error while executing DML to save data into table", sqlEx);
+            throw new IllegalStateException(sqlEx);
+        }
     }
 
     public List<SheetRow> loadByReportDate(LocalDate dateOfWeekBegining) {
@@ -117,7 +191,8 @@ public class MyDBSheet {
 
     /**
      * Collects pairs of email -> date which are missed in the database, which in turns means that the report was not submitted by a person
-     * @param teamEmails List of email of the team to collect data for
+     *
+     * @param teamEmails  List of email of the team to collect data for
      * @param dateFromInc date to proceed database from (including)
      * @param dateTillInc date to proceed database to (including)
      */
@@ -188,7 +263,8 @@ public class MyDBSheet {
             pstm.setString(13, forRow.getWeekStartDate());
 
             int rowsUpdated = pstm.executeUpdate();
-            if (rowsUpdated != 1) throw new SQLException("Unexpected number of updated row. Exp value = 1, act value = " + rowsUpdated);
+            if (rowsUpdated != 1)
+                throw new SQLException("Unexpected number of updated row. Exp value = 1, act value = " + rowsUpdated + ", email = " + forRow.getEmail() + ", date = " + forRow.getWeekStartDate());
         } catch (SQLException sqlEx) {
             log.error("Error while loading data by report date", sqlEx);
             throw new IllegalStateException(sqlEx);

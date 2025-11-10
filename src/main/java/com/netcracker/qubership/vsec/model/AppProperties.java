@@ -94,4 +94,7 @@ public class AppProperties {
      */
     @JsonProperty(value = "WEEKLY_REPORT_GOOGLE_FORM_URL")
     private String weeklyReportFormUrl;
+
+    @JsonProperty(value = "DEBUG_ONLY_EMAIL_TO_SEND_MESSAGES")
+    private String onlyAllowedEmailToSendMessagesViaMattermost;
 }

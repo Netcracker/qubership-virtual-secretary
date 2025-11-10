@@ -60,6 +60,7 @@ public class VirtualSecretaryApp {
             // Open connection to Mattermost server
             MattermostClient mmClient = MattermostClientFactory.openNewClient(appProps.getMmHost(), appProps.getMmToken(), allJobsRegistry.getRegisteredReflectiveJobs());
             MatterMostClientHelper mmHelper = new MatterMostClientHelper(mmClient);
+            mmHelper.setDebugEmailToSendMessagesOnlyTo(appProps.getOnlyAllowedEmailToSendMessagesViaMattermost());
 
             // Run all jobs
             allJobsRegistry.runAllActiveJobs(appProps, mmHelper, conn);

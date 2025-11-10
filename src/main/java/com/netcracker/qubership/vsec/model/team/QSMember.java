@@ -1,7 +1,10 @@
 package com.netcracker.qubership.vsec.model.team;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Getter;
+import lombok.Setter;
 
+@Getter @Setter
 public class QSMember {
     @JsonProperty("email")
     private String email;
@@ -15,35 +18,6 @@ public class QSMember {
     @JsonProperty("lead-email")
     private String leadEmail;
 
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public String getFullName() {
-        return fullName;
-    }
-
-    public void setFullName(String fullName) {
-        this.fullName = fullName;
-    }
-
-    public String getLeadFullName() {
-        return leadFullName;
-    }
-
-    public void setLeadFullName(String leadFullName) {
-        this.leadFullName = leadFullName;
-    }
-
-    public String getLeadEmail() {
-        return leadEmail;
-    }
-
-    public void setLeadEmail(String leadEmail) {
-        this.leadEmail = leadEmail;
-    }
+    @JsonProperty(value = "alternative-email", required = false)
+    private String altEmail;
 }

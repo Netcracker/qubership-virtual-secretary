@@ -49,6 +49,7 @@ class WRHelper {
      */
     void loadLatestDataFromGoogleSheet() {
         String lastLoadedRow = myDBMap.getValue(KEY_WR_LAST_LOADED_ROW, "2");
+        if (Integer.parseInt(lastLoadedRow) < 2) lastLoadedRow = "2"; // small correcness of minimal value - useful during local development
 
         SheetData sheetData;
 
@@ -70,6 +71,9 @@ class WRHelper {
                 throw new IllegalStateException("Unexpected state: number of added rows into DB differs to downloaded from Google Sheet: " +
                         "added = " + rowsAdded + ", downloaded = " + sheetData.getValues().size());
             }
+
+            QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties);
+            myDBSheet.correctMistakesInDB(qsTeam);
 
             myDBMap.setValue(KEY_WR_LAST_LOADED_ROW, "" + (Integer.parseInt(lastLoadedRow) + rowsAdded));
             myDBMap.saveAllToDB();
@@ -103,7 +107,7 @@ class WRHelper {
 
 
         // do notification
-        QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties.getQubershipTeamConfigFile());
+        QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties);
         for (QSMember member : qsTeam.getMembers()) {
             String key = "FRIENDLY NOTIFICATION at " + today + " for " + member.getEmail();
             String value = myDBMap.getValue(key);
@@ -142,7 +146,7 @@ class WRHelper {
                 Please do it ASAP using %s form.
                 """;
 
-        QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties.getQubershipTeamConfigFile());
+        QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties);
         List<String> emails = qsTeam.getAllEmails();
         Map<String, List<LocalDate>> missedReports = myDBSheet.findMissedReportRecords(emails, FROM_DATE, dateToProceedTill);
 
@@ -199,7 +203,7 @@ class WRHelper {
                 2. IMPACT & RESULTS
                    - Use of action verbs (completed, fixed, improved vs. started, worked on)
                    - Presence of measurable results (numbers, metrics, quantitative indicators)
-                   - Connection to goals (explicit mentions of OKRs, business objectives)
+                   - Connection to goals (explicit mentions of Objectives and Key Results)
                 
                 3. PROACTIVITY & PROBLEM-SOLVING
                    - Description of problems and proposed/implemented solutions
@@ -242,7 +246,8 @@ class WRHelper {
                   }
                 }
                 
-                In case report text contains only references to external resources, is empty or there are other issues with report analysis - reply with requested format anyway.
+                In case report text contains only references to external resources or is empty or there are other issues with report analysis - reply with requested format anyway.
+                In case vacation is reported - then return -1 for all scores including final_score, all other details/recommendations must be empty strings.
                 
                 The report text to analyze goes next:
                 """;
@@ -281,7 +286,7 @@ class WRHelper {
         // calculate number of dates - we've fetch - to understand length of the final report
         List<String> uniqueDates = allRows.stream().map(SheetRow::getWeekStartDate).distinct().toList();
 
-        QSTeam team = QSTeamLoader.loadTeam(appProperties.getQubershipTeamConfigFile());
+        QSTeam team = QSTeamLoader.loadTeam(appProperties);
         List<String> uniqueEmails = team.getMembers().stream().map(QSMember::getEmail).distinct().sorted().toList();
 
         // build report caption
@@ -303,13 +308,15 @@ class WRHelper {
         for (String email : uniqueEmails) {
             sb.append("|").append(email);
             for (String date : uniqueDates) {
-                String value = "X";
+                String value = ":warning:";
 
                 for (var row : allRows) {
                     if (email.equals(row.getEmail()) && date.equals(row.getWeekStartDate())) {
                         value = "" + row.getGenAIFinalScore();
                     }
                 }
+
+                if (value.equals("-1")) value = ":desert_island:"; // vacation
 
                 sb.append("|").append(value);
             }
@@ -367,6 +374,11 @@ class WRHelper {
                     """.formatted(reportDate, finalScores, strengths, recommendations, reportText);
 
             User user = mmHelper.getUserByEmail(row.getEmail());
+            if (user == null || user.getEmail() == null) {
+                log.error("Can't find user in Mattermost by email {}", row.getEmail());
+                continue;
+            }
+
             mmHelper.sendMessage(msg, user);
 
             myDBMap.setValue(key, "sent");

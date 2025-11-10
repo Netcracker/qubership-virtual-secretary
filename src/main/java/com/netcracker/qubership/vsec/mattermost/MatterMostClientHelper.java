@@ -1,6 +1,8 @@
 package com.netcracker.qubership.vsec.mattermost;
 
 import com.netcracker.qubership.vsec.mattermost.priv_api.MattermostPost;
+import com.netcracker.qubership.vsec.utils.MiscUtils;
+import lombok.extern.java.Log;
 import net.bis5.mattermost.client4.ApiResponse;
 import net.bis5.mattermost.client4.MattermostClient;
 import net.bis5.mattermost.client4.Pager;
@@ -8,6 +10,8 @@ import net.bis5.mattermost.model.Channel;
 import net.bis5.mattermost.model.Post;
 import net.bis5.mattermost.model.User;
 import net.bis5.mattermost.model.UserList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +23,8 @@ import java.util.concurrent.locks.ReentrantLock;
  * Provides auxiliary methods with caching mechanisms to simplify and optimize calls to mattermost
  */
 public class MatterMostClientHelper {
+    private static final Logger log = LoggerFactory.getLogger(MatterMostClientHelper.class);
+
     /* caches can be unified - in case all IDs are unique - but currently not sure about that */
     private final Map<String, String> usersCache = new ConcurrentHashMap<>(); // cache for userId -> userEmail
     private final Map<String, String> channelsCache = new ConcurrentHashMap<>(); // cache for channelId -> channel name
@@ -27,6 +33,7 @@ public class MatterMostClientHelper {
     private final MattermostClient mmClient;
     private final ReentrantLock lock = new ReentrantLock();
     private User botProfile;
+    private String debugEmailToSendMessagesOnlyTo;
 
     public MatterMostClientHelper(MattermostClient mmClient) {
         if (mmClient == null) throw new NullPointerException("Instance of MatterMost client is null");
@@ -36,6 +43,10 @@ public class MatterMostClientHelper {
 
     public MattermostClient getClient() {
         return mmClient;
+    }
+
+    public void setDebugEmailToSendMessagesOnlyTo(String debugEmailToSendMessagesOnlyTo) {
+        this.debugEmailToSendMessagesOnlyTo = debugEmailToSendMessagesOnlyTo;
     }
 
     private void ensureBotProfile() {
@@ -85,6 +96,14 @@ public class MatterMostClientHelper {
     }
 
     public void sendMessage(String msg, User toUser) {
+        if (!MiscUtils.isEmpty(debugEmailToSendMessagesOnlyTo)) {
+            if (!debugEmailToSendMessagesOnlyTo.equals(toUser.getEmail())) {
+                log.warn("Development Mode - only messages to listed address are allowed");
+                log.info("Message is not be sent via matter-most {}", msg);
+                return;
+            }
+        }
+
         String channelId = defineChannelId(getBotProfile(), toUser);
         sendMessage(msg, channelId);
     }
