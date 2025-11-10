@@ -17,6 +17,10 @@ public class SheetRow {
     private static final DateTimeFormatter DATE_FORMATTER_CREATED_WHEN = DateTimeFormatter.ofPattern("dd.MM.yyyy H:mm:ss");
     private static final DateTimeFormatter DATE_FORMATTER_REPORT_FOR_DATE = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
+    @JsonIgnore
+    @MyDBColumn("id")
+    private String id;
+
     @JsonProperty("timestamp")
     @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
     @MyDBColumn("created_when")
