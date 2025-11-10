@@ -6,8 +6,6 @@ import com.netcracker.qubership.vsec.model.AppProperties;
 
 import java.sql.Connection;
 
-import static java.time.DayOfWeek.*;
-
 public class WeeklyReportAnalyzer extends AbstractActiveJob {
     @Override
     protected void runAsync(AppProperties appProperties, MatterMostClientHelper mmHelper, Connection conn) {
@@ -17,6 +15,6 @@ public class WeeklyReportAnalyzer extends AbstractActiveJob {
         wrHelper.angryNotifyToSendMissedReports();
         wrHelper.calculateExistedReportsQuality();
         wrHelper.sendFeedbacksToReporters();
-        wrHelper.sendReportToManagementIfTodayIsNoonOf(TUESDAY);
+        wrHelper.sendReportToManagementChannel();
     }
 }
