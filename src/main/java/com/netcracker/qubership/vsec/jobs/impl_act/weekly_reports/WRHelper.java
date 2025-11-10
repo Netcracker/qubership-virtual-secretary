@@ -3,10 +3,10 @@ package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netcracker.qubership.vsec.db.MyDBMap;
 import com.netcracker.qubership.vsec.db.MyDBSheet;
+import com.netcracker.qubership.vsec.db.SheetRow;
 import com.netcracker.qubership.vsec.deepseek.DeepSeekCaller;
 import com.netcracker.qubership.vsec.deepseek.ReportAnalysis;
 import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper.SheetData;
-import com.netcracker.qubership.vsec.db.SheetRow;
 import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import com.netcracker.qubership.vsec.model.team.QSMember;
@@ -276,7 +276,47 @@ class WRHelper {
      *
      */
     void sendReportToManagementChannel() {
-        //
+        List<SheetRow> allRows = myDBSheet.loadByQuery("select reporter_email, report_date, genai_final_score from my_db_sheet order by reporter_email");
+
+        // calculate number of dates - we've fetch - to understand length of the final report
+        List<String> uniqueDates = allRows.stream().map(SheetRow::getWeekStartDate).distinct().toList();
+
+        QSTeam team = QSTeamLoader.loadTeam(appProperties.getQubershipTeamConfigFile());
+        List<String> uniqueEmails = team.getMembers().stream().map(QSMember::getEmail).distinct().sorted().toList();
+
+        // build report caption
+        StringBuilder sb = new StringBuilder("|Reporter");
+        for (var date : uniqueDates) {
+            sb.append("|").append(date);
+        }
+        sb.append("|\n");
+
+        // build sub-caption
+        sb.append("|:---");
+        for (var date : uniqueDates) {
+            sb.append("|:---:");
+        }
+        sb.append("|\n");
+
+        // build body
+
+        for (String email : uniqueEmails) {
+            sb.append("|").append(email);
+            for (String date : uniqueDates) {
+                String value = "X";
+
+                for (var row : allRows) {
+                    if (email.equals(row.getEmail()) && date.equals(row.getWeekStartDate())) {
+                        value = "" + row.getGenAIFinalScore();
+                    }
+                }
+
+                sb.append("|").append(value);
+            }
+            sb.append("|\n");
+        }
+
+        log.info("Markdown report result:\n{}", sb);
     }
 
     public static SheetData downloadWeeklyReportsData(String urlStr) throws Exception {
