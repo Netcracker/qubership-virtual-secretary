@@ -14,8 +14,8 @@ on:
   workflow_dispatch:
 
   # note - time in UTC
-  # schedule:
-  #  - cron: "25 3 * * *"
+  schedule:
+    - cron: "0 10,17,21 * * *"
 
 permissions:
   contents: write
