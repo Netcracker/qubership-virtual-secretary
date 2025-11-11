@@ -1,8 +1,7 @@
-package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper;
+package com.netcracker.qubership.vsec.model.googlesheets;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.netcracker.qubership.vsec.db.SheetRow;
 
 import java.util.List;
 

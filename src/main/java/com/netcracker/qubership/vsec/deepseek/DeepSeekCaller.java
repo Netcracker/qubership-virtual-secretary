@@ -13,10 +13,7 @@ import org.apache.hc.core5.http.io.entity.StringEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Properties;
 
 public class DeepSeekCaller {
     private static final Logger log = LoggerFactory.getLogger(DeepSeekCaller.class);

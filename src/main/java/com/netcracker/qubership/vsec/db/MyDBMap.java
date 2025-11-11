@@ -6,7 +6,13 @@ import org.slf4j.LoggerFactory;
 import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
+/**
+ * Persistent map (map-like) implementation.
+ * Stores key-value pairs in the database into my_db_map table
+ */
 public class MyDBMap {
     private static final Logger log = LoggerFactory.getLogger(MyDBMap.class);
 
@@ -17,10 +23,9 @@ public class MyDBMap {
               )
             """;
 
-    private static final String LOAD_ALL_SQL = "SELECT key_name, key_value FROM my_db_map";
-
     private static final String SAVE_ALL_SQL = "MERGE INTO my_db_map (key_name, key_value) VALUES (?, ?)";
 
+    private final ReentrantLock lock = new ReentrantLock();
     private final Connection conn;
     private Map<String, String> data;
 
@@ -36,8 +41,9 @@ public class MyDBMap {
         loadAllFromDB();
     }
 
-    // todo: thread unsafe method - check later for concurrency
     public void saveAllToDB() {
+        lock.lock();
+
         try (PreparedStatement pstmt = conn.prepareStatement(SAVE_ALL_SQL)) {
             for (HashMap.Entry<String, String> entry : data.entrySet()) {
                 pstmt.setString(1, entry.getKey());
@@ -48,11 +54,14 @@ public class MyDBMap {
         } catch (SQLException sqlEx) {
             log.error("Error while executing DML to save data into table", sqlEx);
             throw new IllegalStateException(sqlEx);
+        } finally {
+            lock.unlock();
         }
     }
 
-    public void loadAllFromDB() {
-        HashMap<String, String> map = new HashMap<>();
+    void loadAllFromDB() {
+        final String LOAD_ALL_SQL = "SELECT key_name, key_value FROM my_db_map";
+        Map<String, String> map = new ConcurrentHashMap<>();
 
         try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(LOAD_ALL_SQL)) {
@@ -71,7 +80,9 @@ public class MyDBMap {
     }
 
     public void setValue(String key, String value) {
+        lock.lock();
         data.put(key, value);
+        lock.unlock();
     }
 
     public String getValue(String key) {
@@ -80,7 +91,7 @@ public class MyDBMap {
 
     public String getValue(String key, String defaultValue) {
         String actualValue = data.get(key);
-        if (actualValue == null) setValue(key, defaultValue);
-        return getValue(key);
+        if (actualValue == null) actualValue = defaultValue;
+        return actualValue;
     }
 }

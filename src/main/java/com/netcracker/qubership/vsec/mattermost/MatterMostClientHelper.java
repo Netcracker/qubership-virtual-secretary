@@ -2,7 +2,6 @@ package com.netcracker.qubership.vsec.mattermost;
 
 import com.netcracker.qubership.vsec.mattermost.priv_api.MattermostPost;
 import com.netcracker.qubership.vsec.utils.MiscUtils;
-import lombok.extern.java.Log;
 import net.bis5.mattermost.client4.ApiResponse;
 import net.bis5.mattermost.client4.MattermostClient;
 import net.bis5.mattermost.client4.Pager;
@@ -99,7 +98,7 @@ public class MatterMostClientHelper {
         if (!MiscUtils.isEmpty(debugEmailToSendMessagesOnlyTo)) {
             if (!debugEmailToSendMessagesOnlyTo.equals(toUser.getEmail())) {
                 log.warn("Development Mode - only messages to listed address are allowed");
-                log.info("Message is not be sent via matter-most {}", msg);
+                log.warn("Message was not sent to Mattermost user {}", toUser.getEmail());
                 return;
             }
         }
