@@ -1,4 +1,4 @@
-package com.netcracker.qubership.vsec.jobs.impl_refl;
+package com.netcracker.qubership.vsec.jobs.rjobs;
 
 import com.netcracker.qubership.vsec.jobs.AbstractReflectiveJob;
 import com.netcracker.qubership.vsec.mattermost.priv_api.IMattermostEvent;

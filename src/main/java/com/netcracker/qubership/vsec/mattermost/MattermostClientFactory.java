@@ -1,6 +1,7 @@
 package com.netcracker.qubership.vsec.mattermost;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.netcracker.qubership.vsec.ErrorCodes;
 import com.netcracker.qubership.vsec.jobs.AbstractReflectiveJob;
 import com.netcracker.qubership.vsec.mattermost.priv_api.MattermostEvent;
 import net.bis5.mattermost.client4.MattermostClient;
@@ -42,7 +43,7 @@ public class MattermostClientFactory {
             wsClient.connect();
 
         } catch (URISyntaxException e) {
-            log.error("Error while creating websocket", e);
+            log.error(ErrorCodes.ERR004 + ": Error while creating websocket", e);
             throw new IllegalArgumentException(e);
         }
 
@@ -74,7 +75,7 @@ public class MattermostClientFactory {
                     executorService.submit(() -> next.onEvent(message));
                 }
             } catch (IOException ex) {
-                log.error("Error while processing message", ex);
+                log.error(ErrorCodes.ERR005 + ": Error while processing message", ex);
             }
         }
 
@@ -85,7 +86,7 @@ public class MattermostClientFactory {
 
         @Override
         public void onError(Exception ex) {
-            log.error("Error happened", ex);
+            log.error(ErrorCodes.ERR006 + ": Error happened", ex);
         }
     }
 }

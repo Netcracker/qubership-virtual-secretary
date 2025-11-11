@@ -1,9 +1,10 @@
-package com.netcracker.qubership.vsec.db;
+package com.netcracker.qubership.vsec.model.googlesheets;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.netcracker.qubership.vsec.db.MyDBColumn;
 import lombok.Getter;
 import lombok.Setter;
 

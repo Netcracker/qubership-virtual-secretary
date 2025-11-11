@@ -1,7 +1,9 @@
 package com.netcracker.qubership.vsec.db;
 
+import com.netcracker.qubership.vsec.ErrorCodes;
 import com.netcracker.qubership.vsec.deepseek.ReportAnalysis;
-import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper.SheetData;
+import com.netcracker.qubership.vsec.model.googlesheets.SheetData;
+import com.netcracker.qubership.vsec.model.googlesheets.SheetRow;
 import com.netcracker.qubership.vsec.model.team.QSMember;
 import com.netcracker.qubership.vsec.model.team.QSTeam;
 import com.netcracker.qubership.vsec.utils.MiscUtils;
@@ -49,15 +51,13 @@ public class MyDBSheet {
         try (Statement stmt = conn.createStatement()) {
             stmt.execute(CREATE_TABLE_SQL);
         } catch (SQLException sqlEx) {
-            log.error("Error while executing DDL to create table", sqlEx);
+            log.error(ErrorCodes.ERR009 + ": Error while executing DDL to create table", sqlEx);
             throw new IllegalStateException(sqlEx);
         }
     }
 
     /**
      * Stores data from the model into database.
-     * In case updated reports were added - the same date-reports obsolete records will be cleaned up
-     *
      * @param sheetData
      * @return
      */
@@ -88,13 +88,74 @@ public class MyDBSheet {
 
             updates = pstm.executeBatch();
         } catch (SQLException sqlEx) {
+            log.error(ErrorCodes.ERR010 + ": Error while executing DML to save data into table", sqlEx);
+            throw new IllegalStateException(sqlEx);
+        }
+
+        return updates.length;
+    }
+
+
+    public void correctMistakesInDB(QSTeam qsTeam) {
+        // corrects dates to nearest Mondays:
+        // if Sunday is selected then next nearest Monday will be selected
+        // if other day of week is selected then previous nearest Monday will be selected
+
+        List<SheetRow> allRows = loadByQuery("SELECT id, report_date FROM my_db_sheet");
+        Map<String, String> mistakesMap = new HashMap<>(); // ID -> correct date
+
+        for (var row : allRows) {
+            LocalDate date = LocalDate.parse(row.getWeekStartDate());
+            if (!date.getDayOfWeek().equals(DayOfWeek.MONDAY)) {
+                if (date.getDayOfWeek().equals(DayOfWeek.SUNDAY)) date = date.plusDays(1);
+                while (!date.getDayOfWeek().equals(DayOfWeek.MONDAY)) date = date.minusDays(1);
+                mistakesMap.put(row.getId(), date.toString());
+            }
+        }
+
+        if (!mistakesMap.isEmpty()) {
+            final String updateQuery = "UPDATE my_db_sheet SET report_date = ? WHERE id = ?";
+
+            try (PreparedStatement pstm = conn.prepareStatement(updateQuery)) {
+
+                for (var me : mistakesMap.entrySet()) {
+                    pstm.setString(1, me.getValue());
+                    pstm.setInt(2, Integer.parseInt(me.getKey()));
+                    pstm.addBatch();
+
+                    log.info("Correcting date in database to new value '{}' for ID = {}", me.getValue(), me.getKey());
+                }
+
+                pstm.executeBatch();
+            } catch (SQLException sqlEx) {
+                log.error("Error while executing DML to save data into table", sqlEx);
+                throw new IllegalStateException(sqlEx);
+            }
+
+            log.info("{} number of incorrect dates were corrected", mistakesMap.size());
+        }
+
+        // if alternative emails were used - then set main ones into DB
+        final String updateEmailQuery = "UPDATE my_db_sheet SET reporter_email = ? WHERE reporter_email = ?";
+        try (PreparedStatement pstm = conn.prepareStatement(updateEmailQuery)) {
+            for (QSMember member : qsTeam.getMembers()) {
+                String altEmail = member.getAltEmail();
+                if (MiscUtils.isEmpty(altEmail)) continue;
+
+                pstm.setString(1, member.getEmail());
+                pstm.setString(2, altEmail);
+                pstm.addBatch();
+
+                log.info("Changing submitted alternative email from {} to base {} if will be found in database", altEmail, member.getEmail());
+            }
+
+            pstm.executeUpdate();
+        } catch (SQLException sqlEx) {
             log.error("Error while executing DML to save data into table", sqlEx);
             throw new IllegalStateException(sqlEx);
         }
 
-        final int addedRecordsCount = updates.length;
-
-        // now do clean up of the obsolete records (i.e. which were overriden by reporter with new version of the report)
+        // now do clean up of the obsolete records (i.e. which were overridden by reporter with new version of the report)
         final String CLEAN_UP_OBSOLETE_SQL = """
                 DELETE FROM my_db_sheet\s
                 WHERE id NOT IN (
@@ -117,75 +178,12 @@ public class MyDBSheet {
             int numOfCleanedUpRows = pstm.executeUpdate();
             log.info("{} of obsolete records where cleaned up", numOfCleanedUpRows);
         } catch (SQLException sqlEx) {
-            log.error("Error while executing clean-up procedure", sqlEx);
-        }
-
-
-        return addedRecordsCount;
-    }
-
-
-    public void correctMistakesInDB(QSTeam qsTeam) {
-        // correct dates to nearest Mondays:
-        // if Sunday is selected then next nearest Monday will be set
-        // if other day of week is selected then previous nearest Monday is set
-        List<SheetRow> allRows = loadByQuery("select ID, REPORT_DATE from my_db_sheet");
-        Map<String, String> mistakesMap = new HashMap<>(); // ID -> correct date
-
-        for (var row : allRows) {
-            LocalDate date = LocalDate.parse(row.getWeekStartDate());
-            if (!date.getDayOfWeek().equals(DayOfWeek.MONDAY)) {
-                if (date.getDayOfWeek().equals(DayOfWeek.SUNDAY)) date = date.plusDays(1);
-                while (!date.getDayOfWeek().equals(DayOfWeek.MONDAY)) date = date.minusDays(1);
-                mistakesMap.put(row.getId(), date.toString());
-            }
-        }
-
-        if (!mistakesMap.isEmpty()) {
-            final String updateQuery = "update my_db_sheet set report_date = ? where id = ?";
-
-            try (PreparedStatement pstm = conn.prepareStatement(updateQuery)) {
-
-                for (var me : mistakesMap.entrySet()) {
-                    pstm.setString(1, me.getValue());
-                    pstm.setInt(2, Integer.parseInt(me.getKey()));
-                    pstm.addBatch();
-
-                    log.info("Correcting date in database to new value '{}' for ID = {}", me.getValue(), me.getKey());
-                }
-
-                pstm.executeBatch();
-            } catch (SQLException sqlEx) {
-                log.error("Error while executing DML to save data into table", sqlEx);
-                throw new IllegalStateException(sqlEx);
-            }
-
-            log.info("{} number of incorrect dates were corrected", mistakesMap.size());
-        }
-
-        // if alternative emails were used - then set main ones into DB
-        final String updateEmailQuery = "update my_db_sheet set reporter_email = ? where reporter_email = ?";
-        try (PreparedStatement pstm = conn.prepareStatement(updateEmailQuery)) {
-            for (QSMember member : qsTeam.getMembers()) {
-                String altEmail = member.getAltEmail();
-                if (MiscUtils.isEmpty(altEmail)) continue;
-
-                pstm.setString(1, member.getEmail());
-                pstm.setString(2, altEmail);
-                pstm.addBatch();
-
-                log.info("Changing submitted alternative email from {} to base {}", altEmail, member.getEmail());
-            }
-
-            pstm.executeUpdate();
-        } catch (SQLException sqlEx) {
-            log.error("Error while executing DML to save data into table", sqlEx);
-            throw new IllegalStateException(sqlEx);
+            log.error(ErrorCodes.ERR011 + ": Error while executing clean-up procedure", sqlEx);
         }
     }
 
     public List<SheetRow> loadByReportDate(LocalDate dateOfWeekBegining) {
-        final String LOAD_REPORTS_BY_DATE = "select * from my_db_sheet where report_date = ?";
+        final String LOAD_REPORTS_BY_DATE = "SELECT * FROM my_db_sheet WHERE report_date = ?";
         return loadByQuery(LOAD_REPORTS_BY_DATE, dateOfWeekBegining.toString());
     }
 

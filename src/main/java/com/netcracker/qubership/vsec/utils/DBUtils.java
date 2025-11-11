@@ -1,5 +1,6 @@
 package com.netcracker.qubership.vsec.utils;
 
+import com.netcracker.qubership.vsec.ErrorCodes;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +13,7 @@ public class DBUtils {
         try {
             Class.forName(DB_DRIVER);
         } catch (ClassNotFoundException ex) {
-            log.error("No '{}' DB driver class is found. Terminating app.", DB_DRIVER, ex);
+            log.error(ErrorCodes.ERR003 + ": No '{}' DB driver class is found. Terminating app.", DB_DRIVER, ex);
             System.exit(1);
         }
     }

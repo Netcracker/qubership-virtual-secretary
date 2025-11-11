@@ -1,14 +1,14 @@
-package com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports;
+package com.netcracker.qubership.vsec.jobs.ajobs.weekly_reports;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netcracker.qubership.vsec.db.MyDBMap;
 import com.netcracker.qubership.vsec.db.MyDBSheet;
-import com.netcracker.qubership.vsec.db.SheetRow;
 import com.netcracker.qubership.vsec.deepseek.DeepSeekCaller;
 import com.netcracker.qubership.vsec.deepseek.ReportAnalysis;
-import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.helper.SheetData;
 import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
+import com.netcracker.qubership.vsec.model.googlesheets.SheetData;
+import com.netcracker.qubership.vsec.model.googlesheets.SheetRow;
 import com.netcracker.qubership.vsec.model.team.QSMember;
 import com.netcracker.qubership.vsec.model.team.QSTeam;
 import com.netcracker.qubership.vsec.model.team.QSTeamLoader;
@@ -45,9 +45,12 @@ class WRHelper {
     }
 
     /**
-     *
+     * Download new rows from Google Sheet starting from the row which was remembered last time.
+     * After data is downloaded - it will be stored into database.
+     * If new records for the same date will appear - then obsolete records will be removed.
+     * In case some mistakes will be found (human factor) - they will be modified
      */
-    void loadLatestDataFromGoogleSheet() {
+    void loadAndStoreLatestDataFromGoogleSheet() {
         String lastLoadedRow = myDBMap.getValue(KEY_WR_LAST_LOADED_ROW, "2");
         if (Integer.parseInt(lastLoadedRow) < 2) lastLoadedRow = "2"; // small correcness of minimal value - useful during local development
 
@@ -88,16 +91,14 @@ class WRHelper {
     }
 
     /**
-     * Notifies user to provide a report for the passed week.
-     * A special mark in persistent map is set after successful notification - to avoid redundant
-     * notifications in future
+     * Notifies user to provide a report for the week, which is identified by a nearest happened Friday.
+     * A special mark in database will be stored - not to sent message once again for the selected week.
      */
     void friendlyNotifyAllToSendWeeklyReports() {
-        // Find nearest friday we need to notify on
-        LocalDate today = LocalDate.now();
-        while (!today.getDayOfWeek().equals(DayOfWeek.FRIDAY)) today = today.minusDays(1);
-
-        // Check if notification for calculated friday was done already
+        // Find nearest happened Friday we have to notify at
+        final LocalDate today = LocalDate.now();
+        LocalDate selectedFriday = today;
+        while (!selectedFriday.getDayOfWeek().equals(DayOfWeek.FRIDAY)) selectedFriday = selectedFriday.minusDays(1);
 
         final String notificationMsg = """
                 Good day  :raised_hand_with_fingers_splayed:\s
@@ -105,14 +106,15 @@ class WRHelper {
                 Thank you!
                 """.formatted(appProperties.getWeeklyReportFormUrl());
 
-
-        // do notification
+        // Iterate over the team
         QSTeam qsTeam = QSTeamLoader.loadTeam(appProperties);
         for (QSMember member : qsTeam.getMembers()) {
-            String key = "FRIENDLY NOTIFICATION at " + today + " for " + member.getEmail();
+
+            // Check if notification for calculated friday was done already
+            String key = "FRIENDLY NOTIFICATION at Friday " + selectedFriday + " for " + member.getEmail();
             String value = myDBMap.getValue(key);
-            if ("done".equals(value)) {
-                log.info("User {} is already friendly notified to fill the weekly report today, selected Friday = {}", member.getEmail(), today);
+            if (!MiscUtils.isEmpty(value)) {
+                log.info("User {} is already friendly notified to fill the weekly report today, selected Friday = {}", member.getEmail(), selectedFriday);
                 continue;
             }
 
@@ -120,23 +122,24 @@ class WRHelper {
             mmHelper.sendMessage(notificationMsg, user);
             log.info("User {} is friendly notified to fill the weekly report today", member.getEmail());
 
-            myDBMap.setValue(key, "done");
+            myDBMap.setValue(key, selectedFriday.toString());
             myDBMap.saveAllToDB();
         }
     }
 
     private static final LocalDate FROM_DATE = LocalDate.of(2025, 10, 20);
-    private static final String WARN_VALUE = "Notified at ";
 
     /**
      * Notifies all members of the team to send reports in case there are still no reports from them.
-     * Only reports for the passed week are taken into account.
+     * Only reports for the passed weeks are taken into account.
      * We based on the fact that a week begins from MONDAY day of week.
-     *
-     * The notification will be done once per missed date per email.
+     * The notification will be sent once per day, i.e. next day the same notification may happen again
      *
      */
     void angryNotifyToSendMissedReports() {
+        final LocalDate today = LocalDate.now();
+        final String todayStr = today.toString();
+
         // we need to process all reports up to the Monday (including) of week ago
         LocalDate dateToProceedTill = LocalDate.now().minusWeeks(1);
         while (!dateToProceedTill.getDayOfWeek().equals(DayOfWeek.MONDAY)) dateToProceedTill = dateToProceedTill.minusDays(1);
@@ -157,15 +160,19 @@ class WRHelper {
             List<LocalDate> dates = me.getValue();
 
             for (LocalDate date : dates) {
-                String key = email + " for " + date;
+                final String key = "ANGRY NOTE FOR REPORT " + date + " FOR " + email; // email + " for " + date;
                 String value = myDBMap.getValue(key);
                 if (value != null) {
-                    log.info("User {} was already notified for missed report date = {}: {}", email, date, value);
-                    continue;
+                    // check at least one day is passed since the notification
+                    LocalDate lastSentDate = LocalDate.parse(value);
+                    if (today.equals(lastSentDate)) {
+                        log.info("User {} was already notified for missed report date = {}: {}", email, date, value);
+                        continue;
+                    }
                 }
 
 
-                value = WARN_VALUE + LocalDate.now();
+                value = todayStr;
                 log.info("Sending notification to a user for missed report: email = {} for date = {}: {}", me.getKey(), me.getValue(), value);
 
                 User user = mmHelper.getUserByEmail(email);
@@ -326,7 +333,7 @@ class WRHelper {
         log.info("Markdown report result:\n{}", sb);
     }
 
-    public static SheetData downloadWeeklyReportsData(String urlStr) throws Exception {
+    static SheetData downloadWeeklyReportsData(String urlStr) throws Exception {
         ObjectMapper mapper = new ObjectMapper();
 
         URL url = new URI(urlStr).toURL();
@@ -341,6 +348,8 @@ class WRHelper {
      *
      */
     void sendFeedbacksToReporters() {
+        final String todayStr = LocalDate.now().toString();
+
         // step1: select rows where final_score > 0 order by report_date
         // step2: check notification was not sent before
         // step3: send message
@@ -350,7 +359,7 @@ class WRHelper {
         for (SheetRow row : rows) {
             String key = "SCORES FOR REPORT " + row.getWeekStartDate() + " FOR " + row.getEmail();
             String actValue = myDBMap.getValue(key);
-            if ("sent".equals(actValue)) continue;
+            if (!MiscUtils.isEmpty(actValue)) continue;
 
             String reportDate = row.getWeekStartDate();
             String finalScores= row.getGenAIFinalScore().toString();
@@ -381,7 +390,7 @@ class WRHelper {
 
             mmHelper.sendMessage(msg, user);
 
-            myDBMap.setValue(key, "sent");
+            myDBMap.setValue(key, todayStr);
             myDBMap.saveAllToDB();
 
             log.info("Notification about report scores for week {} was sent to user {}", reportDate, row.getEmail());

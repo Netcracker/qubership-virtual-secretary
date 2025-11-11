@@ -1,8 +1,9 @@
 package com.netcracker.qubership.vsec.jobs;
 
-import com.netcracker.qubership.vsec.jobs.impl_act.CheckAllUsersInMattermostHaveCorrectEmails;
-import com.netcracker.qubership.vsec.jobs.impl_act.weekly_reports.WeeklyReportAnalyzer;
-import com.netcracker.qubership.vsec.jobs.impl_refl.TestReflJob1;
+import com.netcracker.qubership.vsec.ErrorCodes;
+import com.netcracker.qubership.vsec.jobs.ajobs.AJobToCheckAllUsersInMattermostHaveCorrectEmails;
+import com.netcracker.qubership.vsec.jobs.ajobs.weekly_reports.AJobToAnalyzeWeeklyReports;
+import com.netcracker.qubership.vsec.jobs.rjobs.TestReflJob1;
 import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import org.slf4j.Logger;
@@ -28,8 +29,8 @@ public class AllJobsRegistry {
     private final List<AbstractReflectiveJob> registeredReflectiveJobs = new ArrayList<>();
 
     public AllJobsRegistry() {
-        registeredActiveJobs.add(new CheckAllUsersInMattermostHaveCorrectEmails());
-        registeredActiveJobs.add(new WeeklyReportAnalyzer());
+        registeredActiveJobs.add(new AJobToCheckAllUsersInMattermostHaveCorrectEmails());
+        registeredActiveJobs.add(new AJobToAnalyzeWeeklyReports());
 
 
         registeredReflectiveJobs.add(new TestReflJob1());
@@ -56,7 +57,7 @@ public class AllJobsRegistry {
             countDownLatch.await();
             executor.shutdown();
         } catch (InterruptedException ex) {
-            log.error("Error while jobs executing", ex);
+            log.error(ErrorCodes.ERR008 + ": Error while jobs executing", ex);
         }
     }
 }
