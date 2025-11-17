@@ -14,8 +14,9 @@ on:
   workflow_dispatch:
 
   # note - time in UTC
+  # Run action at 10, 15 and 20h by UTC+3 time-zone
   schedule:
-    - cron: "0 10,17,21 * * *"
+    - cron: "0 7,12,17 * * *"
 
 permissions:
   contents: write
