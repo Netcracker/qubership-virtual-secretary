@@ -288,10 +288,10 @@ class WRHelper {
      *
      */
     void sendReportToManagementChannel() {
-        List<SheetRow> allRows = myDBSheet.loadByQuery("select reporter_email, report_date, genai_final_score from my_db_sheet order by reporter_email");
+        List<SheetRow> allRows = myDBSheet.loadByQuery("select reporter_email, report_date, genai_final_score from my_db_sheet WHERE REPORT_DATE >= '" + FROM_DATE + "' order by reporter_email");
 
         // calculate number of dates - we've fetch - to understand length of the final report
-        List<String> uniqueDates = allRows.stream().map(SheetRow::getWeekStartDate).distinct().toList();
+        List<String> uniqueDates = allRows.stream().map(SheetRow::getWeekStartDate).distinct().sorted().toList();
 
         QSTeam team = QSTeamLoader.loadTeam(appProperties);
         List<String> uniqueEmails = team.getMembers().stream().map(QSMember::getEmail).distinct().sorted().toList();
@@ -320,6 +320,8 @@ class WRHelper {
                 for (var row : allRows) {
                     if (email.equals(row.getEmail()) && date.equals(row.getWeekStartDate())) {
                         value = "" + row.getGenAIFinalScore();
+                        allRows.remove(row);
+                        break;
                     }
                 }
 

@@ -149,7 +149,7 @@ public class MyDBSheet {
                 log.info("Changing submitted alternative email from {} to base {} if will be found in database", altEmail, member.getEmail());
             }
 
-            pstm.executeUpdate();
+            pstm.executeUpdate(); // todo: fix case - when no alt emails was set - not to execute stmt
         } catch (SQLException sqlEx) {
             log.error("Error while executing DML to save data into table", sqlEx);
             throw new IllegalStateException(sqlEx);
