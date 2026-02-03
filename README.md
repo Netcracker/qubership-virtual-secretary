@@ -23,6 +23,12 @@ To connect to the DB using [DBeaver](https://dbeaver.io/download/), use the foll
 6. Test connection.
 7. Finish.
 
+> [!NOTE]
+> It is recommended to set 'DEBUG_ONLY_EMAIL_TO_SEND_MESSAGES' property in the app.properties file, cause messges via 
+> Mattermost bot will be sending during application run. So, not to spam everybody - jsut send messages to you only.
+> For such purposes - set your email-address in the mentioned property. The email address will be used to define
+> your Mattermost account.
+
 ### Setup
 #### all-qs-members.json
 List of team members to be notified is managed via the `ALL_QS_MEMBERS` secret.
@@ -50,8 +56,9 @@ During the run, the content of this secret will be mounted into a local temp fil
 See details in the `./.github/workflows/main.yml` action file.
 
 #### app.properties
+&#9888;
 > [!IMPORTANT]
-> If you use Windows-style paths delimiters then put "\\" double slashes, i.e. "c:\\temp\\my_prompt.txt"
+> If you use Windows-style paths delimiters then put "\\" double slashes, i.e. "c:\\\\temp\\\\my_prompt.txt"
 
 ```properties
 version=1
