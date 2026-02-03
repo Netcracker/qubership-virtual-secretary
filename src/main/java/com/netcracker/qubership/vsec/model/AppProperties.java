@@ -50,6 +50,12 @@ public class AppProperties {
     private String qubershipTeamConfigFile;
 
     /**
+     * Path to file with prompt template for weekly report analysis.
+     */
+    @JsonProperty(value = "WEEKLY_REPORT_PROMPT_TEMPLATE_FILE", required = true)
+    private String weeklyReportPromptTemplateFile;
+
+    /**
      * The date in format of YYYY-MM-DD which points to Monday.
      * The Analyzer will check accuracy of weekly reports starting from this date.
      */
@@ -78,16 +84,21 @@ public class AppProperties {
 
     /**
      * URL of OpenAI-compatible API to be used for scoring of weekly reports using GenAI.
-     * DeepSeek is used currently.
      */
-    @JsonProperty(value = "DEEP-SEEK-URL")
-    private String deepSeekUrl;
+    @JsonProperty(value = "GENAI-URL")
+    private String genAIURL;
 
     /**
      * Access token to call openAI-compatible API
      */
-    @JsonProperty(value = "DEEP-SEEK-TOKEN")
-    private String deepSeekToken;
+    @JsonProperty(value = "GENAI-TOKEN")
+    private String genAIToken;
+
+    /**
+     * Model name to be used by OpenAI-compatible API.
+     */
+    @JsonProperty(value = "GENAI-MODEL")
+    private String genAIModel;
 
     /**
      * Link to Google Forms Form. Currently, the URL is used in text messages to help team members remind it.

@@ -2,7 +2,7 @@
 
 ## Project summary
 - Java 24 + Maven project for "Qubership Virtual Secretary".
-- Integrations: Mattermost notifications, Google Sheets/Forms for weekly reports, DeepSeek (OpenAI-compatible) for report analysis.
+- Integrations: Mattermost notifications, Google Sheets/Forms for weekly reports, OpenAI-compatible GenAI for report analysis.
 - Local state stored in an embedded H2 database file under `data/`.
 
 ## Key directories
@@ -24,7 +24,7 @@
   - `java -jar target/vsec.jar`
 
 ## Configuration
-- `app.properties` expected keys (see `README.md`): Mattermost host/token, Google Sheets IDs, DeepSeek URL/token, DB credentials, etc.
+- `app.properties` expected keys (see `README.md`): Mattermost host/token, Google Sheets IDs, OpenAI URL/token, DB credentials, etc.
 - Team member list is provided via `ALL_QS_MEMBERS` secret; its contents are mounted to a temp file and referenced by `QUBERSHIP_TEAM_CONFIG_FILE`.
 
 ## Database
@@ -60,7 +60,7 @@
 ## External services
 - Mattermost (bot token).
 - Google Sheets API + Google Forms source data.
-- DeepSeek (OpenAI-compatible API endpoint).
+- OpenAI-compatible API endpoint
 
 ## CI/automation
 - GitHub Actions workflow mentions `ALL_QS_MEMBERS` secret and `app.properties` wiring (see `.github/workflows/main.yml`).

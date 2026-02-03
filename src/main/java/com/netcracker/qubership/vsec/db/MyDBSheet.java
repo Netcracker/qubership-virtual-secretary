@@ -1,7 +1,7 @@
 package com.netcracker.qubership.vsec.db;
 
 import com.netcracker.qubership.vsec.ErrorCodes;
-import com.netcracker.qubership.vsec.deepseek.ReportAnalysis;
+import com.netcracker.qubership.vsec.genai.ReportAnalysis;
 import com.netcracker.qubership.vsec.model.googlesheets.SheetData;
 import com.netcracker.qubership.vsec.model.googlesheets.SheetRow;
 import com.netcracker.qubership.vsec.model.team.QSMember;
