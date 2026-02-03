@@ -1,4 +1,4 @@
-package com.netcracker.qubership.vsec.deepseek;
+package com.netcracker.qubership.vsec.genai;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;

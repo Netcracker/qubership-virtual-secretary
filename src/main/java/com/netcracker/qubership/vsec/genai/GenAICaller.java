@@ -1,4 +1,4 @@
-package com.netcracker.qubership.vsec.deepseek;
+package com.netcracker.qubership.vsec.genai;
 
 import com.netcracker.qubership.vsec.utils.MiscUtils;
 import org.apache.commons.text.StringEscapeUtils;
@@ -15,40 +15,44 @@ import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 
-public class DeepSeekCaller {
-    private static final Logger log = LoggerFactory.getLogger(DeepSeekCaller.class);
+public class GenAICaller {
+    private static final Logger log = LoggerFactory.getLogger(GenAICaller.class);
 
-    private final String deepSeekUrl;
-    private final String deepSeekToken;
+    private final String openAIURL;
+    private final String openAIToken;
+    private final String modelName;
 
-    public DeepSeekCaller(String deepSeekUrl, String deepSeekToken) {
-        this.deepSeekUrl = deepSeekUrl;
-        this.deepSeekToken = deepSeekToken;
+    public GenAICaller(String openAIURL, String openAIToken, String modelName) {
+        this.openAIURL = openAIURL;
+        this.openAIToken = openAIToken;
+        this.modelName = modelName;
 
-        if (MiscUtils.isEmpty(this.deepSeekUrl))
-            throw new IllegalStateException("Empty DeepSeek URL is provided");
-        if (MiscUtils.isEmpty(this.deepSeekToken))
-            throw new IllegalStateException("Empty DeepSeek access token is provided");
+        if (MiscUtils.isEmpty(this.openAIURL))
+            throw new IllegalStateException("Empty OpenAI URL is provided");
+        if (MiscUtils.isEmpty(this.openAIToken))
+            throw new IllegalStateException("Empty OpenAI access token is provided");
+        if (MiscUtils.isEmpty(this.modelName))
+            throw new IllegalStateException("Empty OpenAI model name is provided");
     }
 
     public String getResponseAsSingleString(String systemRole, String prompt) {
-        DeepSeekChatResponse dsResponse = ask(systemRole, prompt);
+        GenAIResponseModel dsResponse = ask(systemRole, prompt);
         return getBasicText(dsResponse);
     }
 
-    public DeepSeekChatResponse ask(String systemRole, String prompt) {
-        log.debug("Asking DeepSeek: role = {}, prompt = {}", systemRole, prompt);
+    public GenAIResponseModel ask(String systemRole, String prompt) {
+        log.debug("Asking GenAI: role = {}, prompt = {}", systemRole, prompt);
 
-        String deepSeekAnswer = null;
+        String genAIResponse = null;
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost httpPost = new HttpPost(deepSeekUrl);
+            HttpPost httpPost = new HttpPost(openAIURL);
 
             String json = buildRequest(systemRole,prompt);
             StringEntity entity = new StringEntity(json, ContentType.APPLICATION_JSON.withCharset(StandardCharsets.UTF_8));
             httpPost.setEntity(entity);
             httpPost.setHeader("Content-type", "application/json");
-            httpPost.setHeader("Authorization", "Bearer " + deepSeekToken);
+            httpPost.setHeader("Authorization", "Bearer " + openAIToken);
 
             try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
                 int httpCode = response.getCode();
@@ -59,7 +63,7 @@ public class DeepSeekCaller {
 
                 HttpEntity responseEntity = response.getEntity();
                 if (responseEntity != null) {
-                    deepSeekAnswer = EntityUtils.toString(
+                    genAIResponse = EntityUtils.toString(
                             responseEntity,
                             StandardCharsets.UTF_8
                     );
@@ -68,15 +72,15 @@ public class DeepSeekCaller {
                 }
 
                 if (httpCode != 200) {
-                    log.debug("Response = '{}'", deepSeekAnswer);
+                    log.debug("Response = '{}'", genAIResponse);
                 }
             }
         } catch (Exception ex) {
-            log.error("Error while working with DeepSeek", ex);
+            log.error("Error while working with GenAI", ex);
             throw new IllegalStateException(ex);
         }
 
-        return jsonStrToModel(deepSeekAnswer);
+        return jsonStrToModel(genAIResponse);
     }
 
     private String buildRequest(String systemRole, String message) {
@@ -84,7 +88,7 @@ public class DeepSeekCaller {
         message = StringEscapeUtils.escapeJson(message);
 
         return "{\n" +
-                "        \"model\": \"deepseek-chat\",\n" +
+                "        \"model\": \"" + modelName + "\",\n" +
                 "        \"messages\": [\n" +
                 "          {\"role\": \"system\", \"content\": \"" + systemRole + "\"},\n" +
                 "          {\"role\": \"user\", \"content\": \"" + message + "\"}\n" +
@@ -93,12 +97,12 @@ public class DeepSeekCaller {
                 "      }";
     }
 
-    private static DeepSeekChatResponse jsonStrToModel(String jsonStr) {
-        log.debug("DeepSeek raw json = {}", jsonStr);
-        return MiscUtils.readObjectFromJsonStr(jsonStr, DeepSeekChatResponse.class);
+    private static GenAIResponseModel jsonStrToModel(String jsonStr) {
+        log.debug("GenAI raw json = {}", jsonStr);
+        return MiscUtils.readObjectFromJsonStr(jsonStr, GenAIResponseModel.class);
     }
 
-    public String getBasicText(DeepSeekChatResponse dsResponse) {
+    public String getBasicText(GenAIResponseModel dsResponse) {
         if (dsResponse == null) return null;
         if (dsResponse.getChoices() == null) return null;
         if (dsResponse.getChoices().isEmpty()) return null;
@@ -108,7 +112,7 @@ public class DeepSeekCaller {
     }
 
     public boolean doSmokeTest() {
-        DeepSeekChatResponse dsResponse = ask("You are a helpful AI assistant", "Just reply with 'Hello World' phrase.");
+        GenAIResponseModel dsResponse = ask("You are a helpful AI assistant", "Just reply with 'Hello World' phrase.");
         String responseText = getBasicText(dsResponse);
         return responseText.toLowerCase().contains("hello world");
     }

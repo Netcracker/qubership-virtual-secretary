@@ -3,8 +3,8 @@ package com.netcracker.qubership.vsec.jobs.ajobs.weekly_reports;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.netcracker.qubership.vsec.db.MyDBMap;
 import com.netcracker.qubership.vsec.db.MyDBSheet;
-import com.netcracker.qubership.vsec.deepseek.DeepSeekCaller;
-import com.netcracker.qubership.vsec.deepseek.ReportAnalysis;
+import com.netcracker.qubership.vsec.genai.GenAICaller;
+import com.netcracker.qubership.vsec.genai.ReportAnalysis;
 import com.netcracker.qubership.vsec.mattermost.MatterMostClientHelper;
 import com.netcracker.qubership.vsec.model.AppProperties;
 import com.netcracker.qubership.vsec.model.googlesheets.SheetData;
@@ -20,6 +20,9 @@ import org.slf4j.LoggerFactory;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Connection;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -190,86 +193,30 @@ class WRHelper {
      *
      */
     void calculateExistedReportsQuality() {
-        DeepSeekCaller deepSeekCaller = new DeepSeekCaller(appProperties.getDeepSeekUrl(), appProperties.getDeepSeekToken());
-        if (!deepSeekCaller.doSmokeTest()) {
-            log.error("Deepseek smoke test is not passed. Please check settings & token");
+        GenAICaller genAICaller = new GenAICaller(
+                appProperties.getGenAIURL(),
+                appProperties.getGenAIToken(),
+                appProperties.getGenAIModel()
+        );
+        if (!genAICaller.doSmokeTest()) {
+            log.error("OpenAI connectivity smoke test is not passed. Please check settings & token");
             System.exit(1);
         }
 
         final String roleStr = "";
-        final String promptTemplate = """
-                You are an AI assistant that objectively evaluates weekly reports from developers and managers against strict criteria. Your task is to analyze the report text and assign scores across 4 key categories, then calculate a final score.
-                
-                EVALUATION CRITERIA (Scale 1-10):
-                
-                1. CONTENT & COMPLETENESS
-                   - Information density (specifics vs. filler content)
-                   - Coverage of work categories (development, research, collaboration, operations, improvements)
-                   - Structure (logical sections, lists, paragraphs)
-                
-                2. IMPACT & RESULTS
-                   - Use of action verbs (completed, fixed, improved vs. started, worked on)
-                   - Presence of measurable results (numbers, metrics, quantitative indicators)
-                   - Connection to goals (explicit mentions of Objectives and Key Results)
-                
-                3. PROACTIVITY & PROBLEM-SOLVING
-                   - Description of problems and proposed/implemented solutions
-                   - Mention of plans, risks, future improvements
-                   - Constructive analysis of difficulties
-                
-                4. PROFESSIONAL CONTEXT
-                   - Use of technical/professional terminology
-                   - Mention of code review processes, collaboration, code quality
-                   - Specificity and depth of technical details
-                
-                FINAL SCORE FORMULA:
-                Final_Score = 0.3×Content_Score + 0.4×Impact_Score + 0.2×Proactivity_Score + 0.1×Context_Score
-                
-                ANALYSIS INSTRUCTIONS:
-                1. Read the report carefully
-                2. Evaluate each criterion on a 1-10 scale with justification
-                3. Calculate the final score using the formula
-                4. Provide detailed commentary with strengths and improvement recommendations
-                5. Be strict but fair - low scores must be justified
-                
-                RESPONSE FORMAT:
-                {
-                  "scores": {
-                    "content_score": X,
-                    "impact_score": X,
-                    "proactivity_score": X,
-                    "context_score": X,
-                    "final_score": X.X
-                  },
-                  "analysis": {
-                    "content_justification": "text...",
-                    "impact_justification": "text...",
-                    "proactivity_justification": "text...",
-                    "context_justification": "text..."
-                  },
-                  "recommendations": {
-                    "strengths": ["strength 1", "strength 2"],
-                    "improvements": ["recommendation 1", "recommendation 2"]
-                  }
-                }
-                
-                In case report text contains only references to external resources or is empty or there are other issues with report analysis - reply with requested format anyway.
-                In case vacation is reported - then return -1 for all scores including final_score, all other details/recommendations must be empty strings.
-                
-                The report text to analyze goes next:
-                """;
+        final String promptTemplate = loadWeeklyReportPromptTemplate();
 
         // select one next report to analyze
         List<SheetRow> sheetRows = myDBSheet.getReportsWithNoQualityScore();
         for (SheetRow row : sheetRows) {
             String finalPrompt = promptTemplate + row.getCompletedWork();
-            String strResponse = deepSeekCaller.getResponseAsSingleString(roleStr, finalPrompt);
+            String strResponse = genAICaller.getResponseAsSingleString(roleStr, finalPrompt);
             String jsonStr = MiscUtils.getJsonFromMDQuotedString(strResponse);
             try {
                 ReportAnalysis reportAnalysis = ReportAnalysis.createFromString(jsonStr);
                 myDBSheet.saveAnalysisIntoDB(row, reportAnalysis);
 
-                log.info("DeepSeek answer = " + reportAnalysis);
+                log.info("GenAI answer = " + reportAnalysis);
                 // break;
             } catch (Exception ex) {
                 log.error("Error while parsing string as json into ReportAnalysis class [{}]", jsonStr, ex);
@@ -278,6 +225,20 @@ class WRHelper {
         }
 
         log.info("All reports are analyzed");
+    }
+
+    private String loadWeeklyReportPromptTemplate() {
+        String promptFile = appProperties.getWeeklyReportPromptTemplateFile();
+        if (MiscUtils.isEmpty(promptFile)) {
+            throw new IllegalStateException("WEEKLY_REPORT_PROMPT_TEMPLATE_FILE property is empty");
+        }
+
+        try {
+            return Files.readString(Path.of(promptFile), StandardCharsets.UTF_8);
+        } catch (Exception ex) {
+            log.error("Error while reading weekly report prompt template from {}", promptFile, ex);
+            throw new IllegalStateException("Can't read weekly report prompt template file: " + promptFile, ex);
+        }
     }
 
     /**
