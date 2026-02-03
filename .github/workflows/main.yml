@@ -65,6 +65,7 @@ jobs:
           
           echo "${{ secrets.APP_PROPERTIES_FILE }}" > app.properties
           echo '${{ secrets.ALL_QS_MEMBERS }}' > all_qs_members.json
+          echo '${{ secrets.WR_QUALITY_PROMPT }}' > wr_quality_prompt.txt
           java -jar vsec.jar ./app.properties
           mkdir -p ${CURRENT_DIR}/data
           cp ./data/mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
