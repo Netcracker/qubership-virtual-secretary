@@ -56,7 +56,7 @@ During the run, the content of this secret will be mounted into a local temp fil
 See details in the `./.github/workflows/main.yml` action file.
 
 #### app.properties
-&#9888;
+
 > [!IMPORTANT]
 > If you use Windows-style paths delimiters then put "\\" double slashes, i.e. "c:\\\\temp\\\\my_prompt.txt"
 
