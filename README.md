@@ -50,6 +50,9 @@ During the run, the content of this secret will be mounted into a local temp fil
 See details in the `./.github/workflows/main.yml` action file.
 
 #### app.properties
+> [!IMPORTANT]
+> If you use Windows-style paths delimiters then put "\\" double slashes, i.e. "c:\\temp\\my_prompt.txt"
+
 ```properties
 version=1
 MATTERMOST_HOSTNAME=mattermost.example.com
@@ -91,8 +94,8 @@ Properties description:
 | GENAI-MODEL                     | Model name used by OpenAI-compatible API.                                                                                                                                                                                                                    |
 | WEEKLY_REPORT_GOOGLE_FORM_URL   | All answers of the team must be collected into a Google Sheet in a special format; see details below.                                                                                                                                                        |
 
-### Critical note
-Weekly report prompt must contain directive for GenAI to reply strongly in following format (where X is a scalar):
+> [!IMPORTANT]
+> Weekly report prompt must contain directive for GenAI to reply strongly in following format (where X is a scalar):
 ```json
 {
   "scores": {
