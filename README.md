@@ -17,7 +17,7 @@ To connect to the DB using [DBeaver](https://dbeaver.io/download/), use the foll
       ```
 
    4. Apply settings.
-3. URL = `jdbc:h2:{PATH_TO_DB_FILE};CIPHER=AES`
+3. URL = `jdbc:h2:${CORRECT_PATH}\qubership-virtual-secretary\data\mapdb.db;CIPHER=AES`
 4. Enter the username.
 5. Password field consists of two passwords: `FILE_PASSWORD` + one space + `USER_PASSWORD`.
 6. Test connection.
