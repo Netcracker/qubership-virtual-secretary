@@ -1,48 +1,53 @@
 # qubership-virtual-secretary
 
-### Local Development
-To connect to DB using [DBeaver](https://dbeaver.io/download/) use following tips:
-1. Select H2 Embedded type of the database
-2. Go to "Driver settings" -> "Libraries"
-   1. Remove existing driver (if exists)
-   2. Click "Add artifact"
-   3. Paste maven declaration for H2 into "Dependency Declaration", i.e.
-```xml
-<dependency>
-    <groupId>com.h2database</groupId>
-    <artifactId>h2</artifactId>
-    <version>2.2.224</version>
-</dependency>
-```
-   4. Apply settings
-3. URL = jdbc:h2:{PATH_TO_DB_FILE};CIPHER=AES
-4. Username
-5. Password field consists of two passwords: FILE_PASSWORD + ONE SPACE + USER_PASSWORD
-6. Test Connection
-7. Finish
+### Local development
+To connect to the DB using [DBeaver](https://dbeaver.io/download/), use the following steps:
+1. Select the H2 Embedded database type.
+2. Go to "Driver settings/properties" -> "Libraries":
+   1. Remove the existing driver (if any).
+   2. Click "Add artifact".
+   3. Paste the Maven declaration for H2 into "Dependency Declaration", i.e.:
+
+      ```xml
+      <dependency>
+          <groupId>com.h2database</groupId>
+          <artifactId>h2</artifactId>
+          <version>2.2.224</version>
+      </dependency>
+      ```
+
+   4. Apply settings.
+3. URL = `jdbc:h2:{PATH_TO_DB_FILE};CIPHER=AES`
+4. Enter the username.
+5. Password field consists of two passwords: `FILE_PASSWORD` + one space + `USER_PASSWORD`.
+6. Test connection.
+7. Finish.
 
 ### Setup
 #### all-qs-members.json
-List of team members to be notified is managed via "ALL_QS_MEMBERS" secret.
-It must contain JSON structure, like:
+List of team members to be notified is managed via the `ALL_QS_MEMBERS` secret.
+It must contain a JSON structure, like:
 ```json
 {
-  "qubership-members" : [ {
-    "email" : "user1@example.com",
-    "full-name" : "FirstName1 LastName1",
-    "lead-full-name" : "LeadFirstName1 LeadLastName1",
-    "lead-email" : "lead1@example.com"
-  }, {
-    "email" : "user2@example.com",
-    "full-name" : "FirstName2 LastName2",
-    "lead-full-name" : "LeadFirstName2 LeadLastName2",
-    "lead-email" : "lead2@example.com"
-  }
+  "qubership-members": [
+    {
+      "email": "user1@example.com",
+      "full-name": "FirstName1 LastName1",
+      "lead-full-name": "LeadFirstName1 LeadLastName1",
+      "lead-email": "lead1@example.com"
+    },
+    {
+      "email": "user2@example.com",
+      "full-name": "FirstName2 LastName2",
+      "lead-full-name": "LeadFirstName2 LeadLastName2",
+      "lead-email": "lead2@example.com"
+    }
+  ]
 }
 ```
 
-During the run, the content of this secret will be mounted into a local temp file, which is mentioned in the app.properties.
-See details in the ./.github/workflows/main.yml action file.
+During the run, the content of this secret will be mounted into a local temp file, which is referenced in `app.properties`.
+See details in the `./.github/workflows/main.yml` action file.
 
 #### app.properties
 ```properties
@@ -62,36 +67,36 @@ DEEP-SEEK-TOKEN=sk-deepseek-token
 WEEKLY_REPORT_GOOGLE_FORM_URL=https://forms.gle/qwerty123
 ```
 
-Properties description
+Properties description:
 
 | PROPERTY                        | DESCRIPTION                                                                                                                                                                                                                                                  |
 |---------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| version                         | Just informational property which may be printed in the logs for trouble-shooting aims                                                                                                                                                                       |
-| MATTERMOST_HOSTNAME             | Mattermost instance domain to connect Virtual Secretary to for notification purposes                                                                                                                                                                         |
-| MATTERMOST_TOKEN                | The mattermost bot token which will be used by Virtual Secretary                                                                                                                                                                                             |
-| WEEKLY_REPORT_SHEET_ID          | All results from the Google Forms Questionnaire must be collected into a table in Google Sheets (see format below). The Virtual Secretary will fetch user reports from the Google Sheets                                                                   |
-| WEEKLY_REPORT_SHEET_NAME        | Google Sheets Sheet name to read data from                                                                                                                                                                                                                   |
-| WEEKLY_REPORT_API_KEY           | Token to be generated by Google Sheet API to allow access to Google Sheets                                                                                                                                                                                   |
-| WEEKLY_REPORT_START_DATE_MONDAY | Start date to process users reports from. All other will be ignored. Useful when too much reports exist                                                                                                                                                      |
-| QUBERSHIP_TEAM_CONFIG_FILE      | Reference to JSON-based file with list of team members to process. The Mattermost instance may contain a lot of users, but not all must be processed/covered by Virtual Secretary. So, identification by email will be used                                  |
-| DB_USER_NAME                    | All data (statistics) between runs will be stored in the local database using HSQLDB. The name of DB is required. Can be any simple string.                                                                                                                  |
-| DB_USER_PASSWORD                | Password for the database                                                                                                                                                                                                                                    |
-| DB_FILE_ENCRYPTION_PASSWORD     | The database file is stored right in the repository. It is checked out/committed back during the run. If you are aware of security - you need to encrypt it additionally on the file-system layer. So set the password for the encryption of the database file |
-| DEEP-SEEK-URL                   | OpenAI-compatible host to use GenAI for reports analysis.                                                                                                                                                                                                    |
-| DEEP-SEEK-TOKEN                 | Token to authenticate with in GenAI                                                                                                                                                                                                                          |
-| WEEKLY_REPORT_GOOGLE_FORM_URL   | All answers of the team must be collected into Google sheet in a special format, see details of the sheet below                                                                                                                                              |
+| version                         | Informational property that may be printed in logs for troubleshooting.                                                                                                                                                                                      |
+| MATTERMOST_HOSTNAME             | Mattermost instance domain used by Virtual Secretary for notifications.                                                                                                                                                                                      |
+| MATTERMOST_TOKEN                | Mattermost bot token used by Virtual Secretary.                                                                                                                                                                                                              |
+| WEEKLY_REPORT_SHEET_ID          | All results from the Google Forms questionnaire must be collected into a table in Google Sheets (see format below). Virtual Secretary will fetch user reports from the Google Sheet.                                                                        |
+| WEEKLY_REPORT_SHEET_NAME        | Google Sheets sheet name to read data from.                                                                                                                                                                                                                  |
+| WEEKLY_REPORT_API_KEY           | Token generated by the Google Sheets API to allow access to Google Sheets.                                                                                                                                                                                   |
+| WEEKLY_REPORT_START_DATE_MONDAY | Start date to process user reports from. All others are ignored. Useful when too many reports exist.                                                                                                                                                         |
+| QUBERSHIP_TEAM_CONFIG_FILE      | Reference to JSON file with list of team members to process. The Mattermost instance may contain a lot of users, but not all must be processed/covered by Virtual Secretary. Identification by email is used.                                               |
+| DB_USER_NAME                    | All data (statistics) between runs is stored in the local database using HSQLDB. The DB name is required and can be any simple string.                                                                                                                        |
+| DB_USER_PASSWORD                | Password for the database.                                                                                                                                                                                                                                   |
+| DB_FILE_ENCRYPTION_PASSWORD     | Database file encryption password. The database file is stored in the repository and is checked out/committed back during the run. If you care about security, encrypt it additionally at the file-system layer.                                             |
+| DEEP-SEEK-URL                   | OpenAI-compatible host used by GenAI for report analysis.                                                                                                                                                                                                    |
+| DEEP-SEEK-TOKEN                 | Token used to authenticate with GenAI.                                                                                                                                                                                                                       |
+| WEEKLY_REPORT_GOOGLE_FORM_URL   | All answers of the team must be collected into a Google Sheet in a special format; see details below.                                                                                                                                                        |
 
-Google Sheet format, the reply comes in JSON with the following fields:
+Google Sheet format. The reply comes in JSON with the following fields:
 
 | Field          | Description                                                                                                                                                         |
 |----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| timestamp      | Timestamp of the answer in the format dd.MM.yyyy HH:mm:ss, it should be automatically produced field when Google Forms exports data into Google Sheets              |
-| blueStreamLead | Some identifier (enumeration) to understand which department the reporter belongs to. Currently is an optional field, later is desired to be used for summary reports |
+| timestamp      | Timestamp of the answer in the format dd.MM.yyyy HH:mm:ss. This field should be produced automatically when Google Forms exports data into Google Sheets.            |
+| blueStreamLead | Some identifier (enumeration) to understand which department the reporter belongs to. Currently optional; later intended for summary reports.                        |
 | weekStartDate  | The date (in format dd.MM.yyyy) to identify the week the report is created for.                                                                                     |
-| completedWork  | Text field - the report itself, to be analyzed with GenAI                                                                                                           |
-| nextWeekPlans  | Text field - currently an optional field                                                                                                                            |
-| email          | Email to identify the reporter. It is recommended to enable authentication in the Google Forms                                                                       |
+| completedWork  | Text field: the report itself, to be analyzed with GenAI.                                                                                                           |
+| nextWeekPlans  | Text field: currently optional.                                                                                                                                    |
+| email          | Email to identify the reporter. It is recommended to enable authentication in Google Forms.                                                                        |
 
-Summary Results
+Summary results
 
-Currently summary results are rendering in the logs of GitHub action only (using MD-format)
+Summary results are currently rendered only in the GitHub Actions logs (using Markdown format).
