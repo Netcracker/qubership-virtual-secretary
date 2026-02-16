@@ -68,8 +68,10 @@ jobs:
           echo '${{ secrets.ALL_QS_MEMBERS }}' > all_qs_members.json
           echo '${{ secrets.WR_QUALITY_PROMPT }}' > wr_quality_prompt.txt
           java -jar vsec.jar ./app.properties
+          
           mkdir -p ${CURRENT_DIR}/data
-          cp ./tmp/WORKDIR/data/mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
+          echo "Copying back data-base files from /tmp/WORKDIR/data/mapdb.db.mv.db to ${CURRENT_DIR}/data/mapdb.db.mv.db"
+          cp /tmp/WORKDIR/data/mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
           
           cd ${CURRENT_DIR}                    
 
