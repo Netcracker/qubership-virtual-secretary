@@ -57,6 +57,7 @@ jobs:
           # copy database file if exists
           if [ -f "${CURRENT_DIR}/data/mapdb.db.mv.db" ]; then
             cp "${CURRENT_DIR}/data/mapdb.db.mv.db" "/tmp/WORKDIR/data/mapdb.db.mv.db"
+            echo "DB file is copied from ${CURRENT_DIR}/data/mapdb.db.mv.db to /tmp/WORKDIR/data/mapdb.db.mv.db"
           else
             echo "File does not exist, skipping copy"
           fi
@@ -68,7 +69,7 @@ jobs:
           echo '${{ secrets.WR_QUALITY_PROMPT }}' > wr_quality_prompt.txt
           java -jar vsec.jar ./app.properties
           mkdir -p ${CURRENT_DIR}/data
-          cp ./data/mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
+          cp ./tmp/WORKDIR/data/mapdb.db.mv.db ${CURRENT_DIR}/data/mapdb.db.mv.db
           
           cd ${CURRENT_DIR}                    
 
@@ -77,5 +78,5 @@ jobs:
           
           git add ./data/mapdb.db.mv.db                   
           
-          git commit -m "Persist data after run in GitHub VM"
+          git commit -m "Persist data after run in GitHub VM at $(date)"
           git push
