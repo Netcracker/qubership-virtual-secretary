@@ -34,7 +34,7 @@ public class MyDBSheet {
                 genai_impact_score INT DEFAULT 0,
                 genai_proactivity_score INT DEFAULT 0,
                 genai_context_score INT DEFAULT 0,
-                genai_final_score INT DEFAULT 0,
+                genai_final_score DOUBLE DEFAULT 0,
                 genai_analysis_content VARCHAR,
                 genai_analysis_impact VARCHAR,
                 genai_analysis_proactivity VARCHAR,
