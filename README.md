@@ -24,9 +24,10 @@ To connect to the DB using [DBeaver](https://dbeaver.io/download/), use the foll
 7. Finish.
 
 > [!NOTE]
-> It is recommended to set 'DEBUG_ONLY_EMAIL_TO_SEND_MESSAGES' property in the app.properties file, cause messges via 
-> Mattermost bot will be sending during application run. So, not to spam everybody - jsut send messages to you only.
-> For such purposes - set your email-address in the mentioned property. The email address will be used to define
+> It is recommended to set the `DEBUG_ONLY_EMAIL_TO_SEND_MESSAGES` property in the `app.properties` file, because
+> messages will be sent via the Mattermost bot during application runtime. To avoid spamming everyone, send messages
+> only to yourself.
+> For this purpose, set your email address in the mentioned property. The email address will be used to identify
 > your Mattermost account.
 
 ### Setup
@@ -58,7 +59,7 @@ See details in the `./.github/workflows/main.yml` action file.
 #### app.properties
 
 > [!IMPORTANT]
-> If you use Windows-style paths delimiters then put "\\" double slashes, i.e. "c:\\\\temp\\\\my_prompt.txt"
+> If you use Windows-style path delimiters, use escaped backslashes, i.e. `c:\\temp\\my_prompt.txt`.
 
 ```properties
 version=1
@@ -93,7 +94,7 @@ Properties description:
 | WEEKLY_REPORT_START_DATE_MONDAY | Start date to process user reports from. All others are ignored. Useful when too many reports exist.                                                                                                                                                         |
 | QUBERSHIP_TEAM_CONFIG_FILE      | Reference to JSON file with list of team members to process. The Mattermost instance may contain a lot of users, but not all must be processed/covered by Virtual Secretary. Identification by email is used.                                               |
 | WEEKLY_REPORT_PROMPT_TEMPLATE_FILE | Path to the prompt template used for GenAI weekly report analysis.                                                                                                                                                                                        |
-| DB_USER_NAME                    | All data (statistics) between runs is stored in the local database using HSQLDB. The DB name is required and can be any simple string.                                                                                                                        |
+| DB_USER_NAME                    | All data (statistics) between runs is stored in the local database using H2. The DB user name is required and can be any simple string.                                                                                                                         |
 | DB_USER_PASSWORD                | Password for the database.                                                                                                                                                                                                                                   |
 | DB_FILE_ENCRYPTION_PASSWORD     | Database file encryption password. The database file is stored in the repository and is checked out/committed back during the run. If you care about security, encrypt it additionally at the file-system layer.                                             |
 | GENAI-URL                       | OpenAI-compatible host used by GenAI for report analysis.                                                                                                                                                                                                    |
@@ -102,7 +103,7 @@ Properties description:
 | WEEKLY_REPORT_GOOGLE_FORM_URL   | All answers of the team must be collected into a Google Sheet in a special format; see details below.                                                                                                                                                        |
 
 > [!IMPORTANT]
-> Weekly report prompt must contain directive for GenAI to reply strongly in following format (where X is a scalar):
+> Weekly report prompt must contain a directive for GenAI to reply strictly in the following format (where X is a scalar):
 ```json
 {
   "scores": {
@@ -124,11 +125,11 @@ Properties description:
   }
 }
 ```
-See com.netcracker.qubership.vsec.genai.GenAIResponseModel class for response model details.
+See `com.netcracker.qubership.vsec.genai.GenAIResponseModel` class for response model details.
 
 ### Google Sheet format
 
-The reply comes in JSON with the following fields:
+The data comes in JSON with the following fields:
 
 | Field          | Description                                                                                                                                                         |
 |----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
