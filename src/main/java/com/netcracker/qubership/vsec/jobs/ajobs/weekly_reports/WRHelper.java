@@ -18,6 +18,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -28,9 +30,45 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
 
 class WRHelper {
     private static final String KEY_WR_LAST_LOADED_ROW = "WR-LAST-LOADED-ROW";
+    private static final boolean ENABLE_REPORTS_ANALYSE_BY_AI = false;
+    private static final String FAKE_RESPONSES_RESOURCE = "weekly_reports/fake-feedback-responses.txt";
+
+    // In case AI Analysis is disabled - then fake report is used
+    private static final int FAKE_SCORE = 11;
+    private static final ReportAnalysis FAKE_REPORT_ANALYSIS = new ReportAnalysis();
+    static {
+        ReportAnalysis.Analysis analysis = new ReportAnalysis.Analysis();
+        {
+            analysis.setContentJustification("");
+            analysis.setImpactJustification("");
+            analysis.setProactivityJustification("");
+            analysis.setContextJustification("");
+        }
+
+        ReportAnalysis.Scores scores = new ReportAnalysis.Scores();
+        {
+            scores.setContentScore(FAKE_SCORE);
+            scores.setContextScore(FAKE_SCORE);
+            scores.setImpactScore(FAKE_SCORE);
+            scores.setProactivityScore(FAKE_SCORE);
+            scores.setFinalScore(FAKE_SCORE);
+        }
+
+        ReportAnalysis.Recommendations recommendations = new ReportAnalysis.Recommendations();
+        {
+            recommendations.setImprovements(List.of(""));
+            recommendations.setStrengths(List.of(""));
+        }
+
+        FAKE_REPORT_ANALYSIS.setAnalysis(analysis);
+        FAKE_REPORT_ANALYSIS.setScores(scores);
+        FAKE_REPORT_ANALYSIS.setRecommendations(recommendations);
+    }
 
     private static final Logger log = LoggerFactory.getLogger(WRHelper.class);
     private final AppProperties appProperties;
@@ -193,34 +231,43 @@ class WRHelper {
      *
      */
     void calculateExistedReportsQuality() {
-        GenAICaller genAICaller = new GenAICaller(
-                appProperties.getGenAIURL(),
-                appProperties.getGenAIToken(),
-                appProperties.getGenAIModel()
-        );
-        if (!genAICaller.doSmokeTest()) {
-            log.error("OpenAI connectivity smoke test is not passed. Please check settings & token");
-            System.exit(1);
-        }
+        final List<SheetRow> srReportsWithNoScore = myDBSheet.getReportsWithNoQualityScore();
 
-        final String roleStr = "";
-        final String promptTemplate = loadWeeklyReportPromptTemplate();
+        if (ENABLE_REPORTS_ANALYSE_BY_AI) {
+            GenAICaller genAICaller = new GenAICaller(
+                    appProperties.getGenAIURL(),
+                    appProperties.getGenAIToken(),
+                    appProperties.getGenAIModel()
+            );
+            if (!genAICaller.doSmokeTest()) {
+                log.error("OpenAI connectivity smoke test is not passed. Please check settings & token");
+                System.exit(1);
+            }
 
-        // select one next report to analyze
-        List<SheetRow> sheetRows = myDBSheet.getReportsWithNoQualityScore();
-        for (SheetRow row : sheetRows) {
-            String finalPrompt = promptTemplate + row.getCompletedWork();
-            String strResponse = genAICaller.getResponseAsSingleString(roleStr, finalPrompt);
-            String jsonStr = MiscUtils.getJsonFromMDQuotedString(strResponse);
-            try {
-                ReportAnalysis reportAnalysis = ReportAnalysis.createFromString(jsonStr);
-                myDBSheet.saveAnalysisIntoDB(row, reportAnalysis);
+            final String roleStr = "";
+            final String promptTemplate = loadWeeklyReportPromptTemplate();
 
-                log.info("GenAI answer = " + reportAnalysis);
-                // break;
-            } catch (Exception ex) {
-                log.error("Error while parsing string as json into ReportAnalysis class [{}]", jsonStr, ex);
-                throw new IllegalStateException(ex);
+            // select one next report to analyze
+
+            for (SheetRow row : srReportsWithNoScore) {
+                String finalPrompt = promptTemplate + row.getCompletedWork();
+                String strResponse = genAICaller.getResponseAsSingleString(roleStr, finalPrompt);
+                String jsonStr = MiscUtils.getJsonFromMDQuotedString(strResponse);
+                try {
+                    ReportAnalysis reportAnalysis = ReportAnalysis.createFromString(jsonStr);
+                    myDBSheet.saveAnalysisIntoDB(row, reportAnalysis);
+
+                    log.info("GenAI answer = " + reportAnalysis);
+                    // break;
+                } catch (Exception ex) {
+                    log.error("Error while parsing string as json into ReportAnalysis class [{}]", jsonStr, ex);
+                    throw new IllegalStateException(ex);
+                }
+            }
+        } else {
+            // if AI analyse is disabled - them mark all existed reports as fine
+            for (SheetRow row : srReportsWithNoScore) {
+                myDBSheet.saveAnalysisIntoDB(row, FAKE_REPORT_ANALYSIS);
             }
         }
 
@@ -238,6 +285,24 @@ class WRHelper {
         } catch (Exception ex) {
             log.error("Error while reading weekly report prompt template from {}", promptFile, ex);
             throw new IllegalStateException("Can't read weekly report prompt template file: " + promptFile, ex);
+        }
+    }
+
+    private List<String> loadFakeResponses() {
+        try (InputStream inputStream = WRHelper.class.getClassLoader().getResourceAsStream(FAKE_RESPONSES_RESOURCE)) {
+            if (inputStream == null) {
+                throw new IllegalStateException("Can't find fake responses resource: " + FAKE_RESPONSES_RESOURCE);
+            }
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+                return reader.lines()
+                        .map(String::trim)
+                        .filter(line -> !line.isEmpty())
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception ex) {
+            log.error("Error while reading fake responses from {}", FAKE_RESPONSES_RESOURCE, ex);
+            throw new IllegalStateException("Can't read fake responses resource: " + FAKE_RESPONSES_RESOURCE, ex);
         }
     }
 
@@ -317,6 +382,8 @@ class WRHelper {
         // step2: check notification was not sent before
         // step3: send message
         // step4: store flag - notification was sent
+        final List<String> fakeResponses = loadFakeResponses();
+        final String fakeScore = "" + FAKE_SCORE;
 
         List<SheetRow> rows = myDBSheet.getReportsWithQualityScore();
         for (SheetRow row : rows) {
@@ -324,26 +391,48 @@ class WRHelper {
             String actValue = myDBMap.getValue(key);
             if (!MiscUtils.isEmpty(actValue)) continue;
 
-            String reportDate = row.getWeekStartDate();
-            String finalScores= row.getGenAIFinalScore().toString();
-            String strengths  = row.getAnalysisStrengths();
-            String recommendations = row.getAnalysisImprovements();
-            String reportText = row.getCompletedWork();
 
-            String msg = """
-                    :star2: Your report for the week **%s** was rated **%s out of 10**.
-                    Your good strengths in the report are:
-                    > %s
-                    
-                    Here are recommendations to be taken into account for future reports:
-                    > %s
-                    
-                    Original report text:
-                    ```text
-                    %s
-                    ```
-                    Thank you!
-                    """.formatted(reportDate, finalScores, strengths, recommendations, reportText);
+
+            // If analyze is enabled - then override message with real scores
+            String finalScores = row.getGenAIFinalScore().toString();
+            String reportDate = row.getWeekStartDate();
+
+            // Set message to default
+            String msg = "";
+            if (fakeScore.equals(finalScores)) {
+                if (fakeResponses.isEmpty()) {
+                    msg = """
+                            :star2: Your report for the week **%s** is excellent!
+                            Thank you!
+                            """.formatted(reportDate);
+                } else {
+                    int randomIndex = ThreadLocalRandom.current().nextInt(fakeResponses.size());
+                    msg = fakeResponses.get(randomIndex).formatted(reportDate);
+                }
+            }
+
+            if (!fakeScore.equals(finalScores)) {
+
+                String strengths = row.getAnalysisStrengths();
+                String recommendations = row.getAnalysisImprovements();
+                String reportText = row.getCompletedWork();
+
+                msg = """
+                        :star2: Your report for the week **%s** was rated **%s out of 10**.
+                        Your good strengths in the report are:
+                        > %s
+                        
+                        Here are recommendations to be taken into account for future reports:
+                        > %s
+                        
+                        Original report text:
+                        ```text
+                        %s
+                        ```
+                        Thank you!
+                        """.formatted(reportDate, finalScores, strengths, recommendations, reportText);
+            }
+
 
             User user = mmHelper.getUserByEmail(row.getEmail());
             if (user == null || user.getEmail() == null) {
@@ -356,7 +445,7 @@ class WRHelper {
             myDBMap.setValue(key, todayStr);
             myDBMap.saveAllToDB();
 
-            log.info("Notification about report scores for week {} was sent to user {}", reportDate, row.getEmail());
+            log.info("Notification about report scores for week {} was sent to user {}", row.getWeekStartDate(), row.getEmail());
         }
     }
 
