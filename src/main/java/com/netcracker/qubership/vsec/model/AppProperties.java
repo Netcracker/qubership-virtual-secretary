@@ -108,4 +108,7 @@ public class AppProperties {
 
     @JsonProperty(value = "DEBUG_ONLY_EMAIL_TO_SEND_MESSAGES")
     private String onlyAllowedEmailToSendMessagesViaMattermost;
+
+    @JsonProperty(value = "MATTERMOST_MANAGEMENT_CHANNEL_ID")
+    private String managementChannelId;
 }
