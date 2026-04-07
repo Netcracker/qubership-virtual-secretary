@@ -33,7 +33,7 @@ To connect to the DB using [DBeaver](https://dbeaver.io/download/), use the foll
 ### Setup
 #### all-qs-members.json
 List of team members to be notified is managed via the `ALL_QS_MEMBERS` secret.
-It must contain a JSON structure, like:
+It must contain a JSON structure such as:
 ```json
 {
   "qubership-members": [
@@ -75,7 +75,8 @@ DB_USER_NAME=db_user_name
 DB_USER_PASSWORD=db_user_password
 DB_FILE_ENCRYPTION_PASSWORD=pass_to_encrypt_file_with_database
 WEEKLY_REPORT_GOOGLE_FORM_URL=https://forms.gle/qwerty123
-# For GENAI properties use any OpenAI compatible provider. Example for DeepSeek GenAI.
+MATTERMOST_MANAGEMENT_CHANNEL_ID=abcde12345fghij67890klmno
+# For GENAI properties use any OpenAI-compatible provider. Example for DeepSeek GenAI.
 GENAI-URL=https://api.deepseek.com/chat/completions
 GENAI-TOKEN=sk-deepseek-token
 GENAI-MODEL=deepseek-chat
@@ -101,6 +102,7 @@ Properties description:
 | GENAI-TOKEN                     | Token used to authenticate with GenAI.                                                                                                                                                                                                                       |
 | GENAI-MODEL                     | Model name used by OpenAI-compatible API.                                                                                                                                                                                                                    |
 | WEEKLY_REPORT_GOOGLE_FORM_URL   | All answers of the team must be collected into a Google Sheet in a special format; see details below.                                                                                                                                                        |
+| MATTERMOST_MANAGEMENT_CHANNEL_ID | Mattermost channel ID used to publish the management summary report. If not set, the report is not sent to a channel and is printed to logs only.                                                                                                         |
 
 > [!IMPORTANT]
 > Weekly report prompt must contain a directive for GenAI to reply strictly in the following format (where X is a scalar):
@@ -140,6 +142,9 @@ The data comes in JSON with the following fields:
 | nextWeekPlans  | Text field: currently optional.                                                                                                                                    |
 | email          | Email to identify the reporter. It is recommended to enable authentication in Google Forms.                                                                        |
 
-Summary results
+### Summary results
+Summary results are collected for the last 3 months and can be sent to the Mattermost channel (if set) or jsut printed into logs.
+The format is follow:
 
-Summary results are currently rendered only in the GitHub Actions logs (using Markdown format).
+| REPORTER | Week (past) | Week (closer) | Week ... | Week (now) |
+|----------|-------------|---------------|----------|------------|
