@@ -200,6 +200,8 @@ class WRHelper {
             String email  = me.getKey();
             List<LocalDate> dates = me.getValue();
 
+            boolean sendNotification = false;
+
             for (LocalDate date : dates) {
                 final String key = "ANGRY NOTE FOR REPORT " + date + " FOR " + email; // email + " for " + date;
                 String value = myDBMap.getValue(key);
@@ -212,15 +214,16 @@ class WRHelper {
                     }
                 }
 
+                sendNotification = true;
+                myDBMap.setValue(key, todayStr);
+            }
 
-                value = todayStr;
-                log.info("Sending notification to a user for missed report: email = {} for date = {}: {}", me.getKey(), me.getValue(), value);
+            if (sendNotification) {
+                log.info("Sending notification to a user for missed report: email = {} for date = {}", me.getKey(), me.getValue());
 
                 User user = mmHelper.getUserByEmail(email);
                 String msg = ANGRY_NOTIFICATION_MSG.formatted(me.getValue(), appProperties.getWeeklyReportFormUrl());
                 mmHelper.sendMessage(msg, user);
-
-                myDBMap.setValue(key, value);
             }
 
             myDBMap.saveAllToDB();
