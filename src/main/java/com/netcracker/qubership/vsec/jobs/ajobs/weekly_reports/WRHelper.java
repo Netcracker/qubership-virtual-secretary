@@ -317,7 +317,23 @@ class WRHelper {
      *
      */
     void sendReportToManagementChannel() {
-        LocalDate reportFromDate = LocalDate.now().minusMonths(3);
+        LocalDate today = LocalDate.now();
+
+        // The management report is sent once per reporting week,
+        // where the week is anchored by the latest happened Wednesday.
+        LocalDate selectedWednesday = today;
+        while (!selectedWednesday.getDayOfWeek().equals(DayOfWeek.WEDNESDAY)) {
+            selectedWednesday = selectedWednesday.minusDays(1);
+        }
+
+        final String reportIsSentKey = "MANAGEMENT REPORT FOR WEDNESDAY " + selectedWednesday;
+        String sentValue = myDBMap.getValue(reportIsSentKey);
+        if (!MiscUtils.isEmpty(sentValue)) {
+            log.info("Management report is already sent for Wednesday {} (mark date = {})", selectedWednesday, sentValue);
+            return;
+        }
+
+        LocalDate reportFromDate = today.minusMonths(3);
         List<SheetRow> allRows = myDBSheet.loadByQuery("select reporter_email, report_date, genai_final_score from my_db_sheet WHERE REPORT_DATE >= '" + reportFromDate + "' order by reporter_email");
 
         // calculate number of dates - we've fetch - to understand length of the final report
@@ -365,6 +381,8 @@ class WRHelper {
         String managementChannelId = appProperties.getManagementChannelId();
         if (!MiscUtils.isEmpty(managementChannelId)) {
             mmHelper.sendMessage(sb.toString(), managementChannelId); // send to management channel
+            myDBMap.setValue(reportIsSentKey, today.toString());
+            myDBMap.saveAllToDB();
             log.info("Report is sent to Mattermost management channel");
         } else {
             log.warn("Mattermost Management Channel is not set. Print report into logs:\n{}", sb);
