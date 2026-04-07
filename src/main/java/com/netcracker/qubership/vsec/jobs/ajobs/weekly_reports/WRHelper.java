@@ -317,7 +317,8 @@ class WRHelper {
      *
      */
     void sendReportToManagementChannel() {
-        List<SheetRow> allRows = myDBSheet.loadByQuery("select reporter_email, report_date, genai_final_score from my_db_sheet WHERE REPORT_DATE >= '" + FROM_DATE + "' order by reporter_email");
+        LocalDate reportFromDate = LocalDate.now().minusMonths(3);
+        List<SheetRow> allRows = myDBSheet.loadByQuery("select reporter_email, report_date, genai_final_score from my_db_sheet WHERE REPORT_DATE >= '" + reportFromDate + "' order by reporter_email");
 
         // calculate number of dates - we've fetch - to understand length of the final report
         List<String> uniqueDates = allRows.stream().map(SheetRow::getWeekStartDate).distinct().sorted().toList();
@@ -361,7 +362,14 @@ class WRHelper {
             sb.append("|\n");
         }
 
-        log.info("Markdown report result:\n{}", sb);
+        String managementChannelId = appProperties.getManagementChannelId();
+        if (!MiscUtils.isEmpty(managementChannelId)) {
+            mmHelper.sendMessage(sb.toString(), managementChannelId); // send to management channel
+            log.info("Report is sent to Mattermost management channel");
+        } else {
+            log.warn("Mattermost Management Channel is not set. Print report into logs:\n{}", sb);
+        }
+
     }
 
     static SheetData downloadWeeklyReportsData(String urlStr) throws Exception {
