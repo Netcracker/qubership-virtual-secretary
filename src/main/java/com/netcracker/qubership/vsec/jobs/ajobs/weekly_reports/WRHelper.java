@@ -317,7 +317,7 @@ class WRHelper {
      *
      */
     void sendReportToManagementChannel() {
-        LocalDate today = LocalDate.now();
+        final LocalDate today = LocalDate.now();
 
         // The management report is sent once per reporting week,
         // where the week is anchored by the latest happened Wednesday.
@@ -333,8 +333,13 @@ class WRHelper {
             return;
         }
 
+        LocalDate currentWeekMonday = today;
+        while (!currentWeekMonday.getDayOfWeek().equals(DayOfWeek.MONDAY)) {
+            currentWeekMonday = currentWeekMonday.minusDays(1);
+        }
+
         LocalDate reportFromDate = today.minusMonths(3);
-        List<SheetRow> allRows = myDBSheet.loadByQuery("select reporter_email, report_date, genai_final_score from my_db_sheet WHERE REPORT_DATE >= '" + reportFromDate + "' order by reporter_email");
+        List<SheetRow> allRows = myDBSheet.loadByQuery("select reporter_email, report_date, genai_final_score from my_db_sheet WHERE REPORT_DATE >= '" + reportFromDate + "' AND REPORT_DATE < '" + currentWeekMonday + "' order by reporter_email");
 
         // calculate number of dates - we've fetch - to understand length of the final report
         List<String> uniqueDates = allRows.stream().map(SheetRow::getWeekStartDate).distinct().sorted().toList();
