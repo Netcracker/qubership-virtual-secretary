@@ -1,4 +1,17 @@
 # qubership-virtual-secretary
+## About
+Virtual Secretary is a bot-like application the main goal is to perform different checks for the opensource team.
+The application must be scheduled to be run few times a day.
+GitHub virtual environment (using GitHub actions) is used.
+
+There are different check supported currently:
+1. Weekly reports:
+   * each member of the team reports to special Google form. The data is persisted into Google sheet. 
+   * the app checks that each member has created a report for the each passed week
+   * in case report is absent the app notifies member via Mattermost channel
+
+Also, the secretary-app create weekly summary report to management and sends it into Mattermost channel.
+
 
 ### Local development
 To connect to the DB using [DBeaver](https://dbeaver.io/download/), use the following steps:
@@ -148,3 +161,30 @@ The format is follow:
 
 | REPORTER | Week (past) | Week (closer) | Week ... | Week (now) |
 |----------|-------------|---------------|----------|------------|
+
+
+## Cleaning
+All data is stored back to this repository into `data/mapdb.db.mv.db` file. The git history of the file comes too heavy when some time passed.
+
+**Important!** Have a copy of the repository with unchanged history - as we need actual latest *.db file after cleaning.
+
+It is recommended to clean up the history if the repository using following instructions:
+```shell
+# clone repository into very new folder
+git clone https://github.com/Netcracker/qubership-virtual-secretary.git
+
+# go into it
+cd qubership-virtual-secretary
+
+# clean up the history of the file
+git filter-repo --path data/mapdb.db.mv.db --invert-paths
+
+# push changes back
+git push --force --all
+
+# if git says 'fatal: No configured push destination` call
+# git remote add origin https://github.com/Netcracker/qubership-virtual-secretary.git
+# then repeat `git push --force --all`
+```
+
+Then copy back actual latest version of `data/mapdb.db.mv.db` file and commmit&push changes.
