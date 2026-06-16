@@ -15,7 +15,8 @@ public class AJobToAnalyzeWeeklyReports extends AbstractActiveJob {
         wrHelper.friendlyNotifyAllToSendWeeklyReports();
         wrHelper.angryNotifyToSendMissedReports();
         wrHelper.calculateExistedReportsQuality();
-        wrHelper.sendFeedbacksToReporters();
+        // currently we disable useless feedbacks
+        // wrHelper.sendFeedbacksToReporters();
         wrHelper.sendReportToManagementChannel();
     }
 }
