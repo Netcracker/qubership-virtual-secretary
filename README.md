@@ -164,27 +164,25 @@ The format is follow:
 
 
 ## Cleaning
-All data is stored back to this repository into `data/mapdb.db.mv.db` file. The git history of the file comes too heavy when some time passed.
+All data is stored in `data/mapdb.db.mv.db` and committed back to this repository. Over time, the file can make the Git
+history too large.
 
-**Important!** Have a copy of the repository with unchanged history - as we need actual latest *.db file after cleaning.
+> [!WARNING]
+> Back up the latest `data/mapdb.db.mv.db` file before rewriting the repository history. A force push replaces the
+> remote `main` branch history.
 
-It is recommended to clean up the history if the repository using following instructions:
-```shell
-# clone repository into very new folder
+Use the following commands to remove the database file from the entire Git history and then commit its latest version:
+
+```bash
 git clone https://github.com/Netcracker/qubership-virtual-secretary.git
-
-# go into it
 cd qubership-virtual-secretary
-
-# clean up the history of the file
 git filter-repo --path data/mapdb.db.mv.db --invert-paths
-
-# push changes back
-git push --force --all
-
-# if git says 'fatal: No configured push destination` call
-# git remote add origin https://github.com/Netcracker/qubership-virtual-secretary.git
-# then repeat `git push --force --all`
+git remote add origin https://github.com/Netcracker/qubership-virtual-secretary.git
+git push --force --set-upstream origin main
+git add data/mapdb.db.mv.db
+git commit -m "chore: drop binary DB history"
+git push
 ```
 
-Then copy back actual latest version of `data/mapdb.db.mv.db` file and commmit&push changes.
+If `data/mapdb.db.mv.db` is no longer present after `git filter-repo`, restore the backed-up file before running
+`git add`.
