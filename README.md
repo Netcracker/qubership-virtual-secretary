@@ -169,16 +169,20 @@ history too large.
 
 > [!WARNING]
 > Back up the latest `data/mapdb.db.mv.db` file before rewriting the repository history. A force push replaces the
-> remote `main` branch history.
+> remote history for all branches and tags. Coordinate this operation with other contributors because their existing
+> clones will still contain the old history.
 
 Use the following commands to remove the database file from the entire Git history and then commit its latest version:
 
 ```bash
 git clone https://github.com/Netcracker/qubership-virtual-secretary.git
+# make a copy of the `data/mapdb.db.mv.db` file
 cd qubership-virtual-secretary
 git filter-repo --path data/mapdb.db.mv.db --invert-paths
 git remote add origin https://github.com/Netcracker/qubership-virtual-secretary.git
-git push --force --set-upstream origin main
+git push --force --set-upstream origin --all
+git push --force origin --tags
+# copy back the `data/mapdb.db.mv.db` file
 git add data/mapdb.db.mv.db
 git commit -m "chore: drop binary DB history"
 git push
@@ -186,3 +190,18 @@ git push
 
 If `data/mapdb.db.mv.db` is no longer present after `git filter-repo`, restore the backed-up file before running
 `git add`.
+
+The `--all` and `--tags` options are required. Any remote branch or tag that still points to the old history keeps the
+removed database versions reachable, so a new clone downloads them again.
+
+Clone the repository into a separate directory to verify that the remote no longer contains the old database history:
+
+```bash
+cd ..
+git clone https://github.com/Netcracker/qubership-virtual-secretary.git qubership-virtual-secretary-verification
+git -C qubership-virtual-secretary-verification count-objects -vH
+git -C qubership-virtual-secretary-verification log --all --oneline -- data/mapdb.db.mv.db
+```
+
+The object statistics should no longer report a multi-gigabyte pack. The log should contain only the commit that adds
+the latest database version after the history rewrite.
