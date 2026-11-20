@@ -5,6 +5,7 @@ import com.netcracker.qubership.vsec.ErrorCodes;
 import com.netcracker.qubership.vsec.jobs.AbstractReflectiveJob;
 import com.netcracker.qubership.vsec.mattermost.priv_api.MattermostEvent;
 import net.bis5.mattermost.client4.MattermostClient;
+import org.glassfish.jersey.jackson.JacksonFeature;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ public class MattermostClientFactory {
         String url = "https://" + mmServerDomainName;
         MattermostClient client = MattermostClient.builder()
                 .url(url).ignoreUnknownProperties()
+                .httpConfig(builder -> builder.register(JacksonFeature.class))
                 .build();
         client.setAccessToken(mmAccessToken);
 
